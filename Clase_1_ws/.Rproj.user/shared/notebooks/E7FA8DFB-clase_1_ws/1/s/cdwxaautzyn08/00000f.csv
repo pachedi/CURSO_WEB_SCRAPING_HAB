@@ -1,0 +1,6 @@
+"0","autor <- descarga %>% "
+"0","  html_element(""#col_right"") %>% "
+"0","  html_element(""p.t24px"") %>% "
+"0","  html_text2()"
+"0",""
+"0",""

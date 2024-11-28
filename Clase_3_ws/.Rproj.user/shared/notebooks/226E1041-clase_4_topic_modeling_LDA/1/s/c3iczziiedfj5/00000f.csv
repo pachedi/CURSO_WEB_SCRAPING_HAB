@@ -1,0 +1,4 @@
+"0","revistas_tidy <- revistas %>%"
+"0","                unnest_tokens(word, text)"
+"0",""
+"0","head(revistas_tidy)"

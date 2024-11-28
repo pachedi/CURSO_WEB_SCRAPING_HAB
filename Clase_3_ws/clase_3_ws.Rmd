@@ -1,0 +1,552 @@
+---
+title: "Clase 3 - R web scraping"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_collapsed: true
+    toc_depth: 3
+    #number_sections: true
+    theme: lumen
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Scrapeo de páginas dinámicas
+
+Muchas páginas ya no están estructuradas de manera estática sino que son "dinámicas". Es decir que se van modificando a medida que el usuario va realizando acciones. Por este motivo, es necesario utilizar otra técnica para obtener información.
+El paquete que nos ayuda a scrapear páginas dinámicas es RSelenium
+```{r}
+library(RSelenium)
+library(tidyverse)
+library(rvest)
+library(Rcrawler)
+
+```
+
+En primer lugar necesitamos indicar el browser, la versión de chromever (en este caso NULL) y un puerto de conexión.
+Luego, buscamos al cliente de nuestra conexión con el navegador.
+```{r}
+rd <- rsDriver(browser = "firefox",
+               chromever = NULL,
+               port= 4456L)
+
+remDr <- rd[["client"]]
+
+
+```
+
+Ahora estamos en condiciones de empezar a navegar.
+Con navigate, le indicamos a R la página a la cual queremos acceder
+```{r}
+remDr$navigate("https://www.infobae.com/")
+
+remDr$maxWindowSize()
+
+
+```
+
+Algunas páginas presentan pop ups de suscripción o similar. Tenemos que quitarlos para que no estorben nuestra navegacion.
+```{r}
+
+Sys.sleep(5)
+remDr$findElements("id", "onesignal-slidedown-cancel-button")[[1]]$clickElement()
+
+
+```
+
+Ahora, abrimos al menú de búsqueda
+```{r}
+Sys.sleep(3)
+remDr$findElements("id", "hamburger-icon")[[1]]$clickElement()
+
+```
+
+Hacemos click sobre el ícono de búsqueda
+```{r}
+Sys.sleep(3)
+remDr$findElements("id", "search-icon")[[1]]$clickElement()
+
+
+```
+
+Buscamos la barra de búsqueda y tipeamos las palabras que queremos que coincidan.
+```{r}
+
+Sys.sleep(5)
+search_bar <- remDr$findElement(using = "id", value = "queryly_query")
+
+search_bar$sendKeysToElement(list("web scraping"))
+```
+
+
+Como podemos ver,al tipear en la barra de búsqueda, la página que estamo visitando nunca cambió. Por lo que si hubiésemos utilizado tan sólo el paquete rvest estaríamos en problemas.
+Ahora, podemos leer la página fuente con la función getPageSource y posteriormente utilizamos
+```{r}
+
+pagina_fuente <- remDr$getPageSource()[[1]]
+
+pagina <- read_html(pagina_fuente)
+
+```
+
+Obtengamos los títulos.
+Si bien la página dice que obtuvimos 24 resultado, sólo vemos 10 títulos.
+Esta es otra característica de las páginas dinámicas, se van cargando a medida que el usuario scrollea. Esto nos obliga a scrollear hacia abajo.
+```{r}
+
+Sys.sleep(3)
+titles <- pagina %>% html_nodes("div.queryly_item_title") %>% 
+  html_text() %>% 
+  str_squish()
+
+length(titles)
+
+```
+
+Afortunadamente, existe una función para scrollear.
+```{r}
+
+remDr$executeScript("window.scrollTo(0, document.body.scrollHeight);")
+
+Sys.sleep(5)
+
+remDr$executeScript("window.scrollTo(0, document.body.scrollHeight);")
+
+Sys.sleep(5)
+
+```
+Volvamos a cargar la página fuente y los títulos. Ahora tenemos todo lo que necesitamos.
+```{r}
+
+pagina_fuente <- remDr$getPageSource()[[1]]
+
+pagina <- read_html(pagina_fuente)
+
+titles <- pagina %>% html_nodes("div.queryly_item_title") %>% 
+  html_text() %>% 
+  str_squish()
+
+length(titles)
+
+```
+
+Ya obtuvimos los títulos.
+Ahora buscamos los links.
+```{r}
+
+links <- pagina %>% 
+  html_nodes("div.queryly_item_title") %>% 
+  html_elements("a") %>% 
+  html_attr("href") 
+
+```
+
+Eliminanos los links duplicados por las dudas.
+Luego, al igual que las veces anteriores, utilizamos la raiz para completar los links
+```{r}
+links <- links[!duplicated(links) ]
+
+raiz <- "https://www.infobae.com"
+
+links_completos <- str_c(raiz, links)
+
+
+```
+
+Trabajemos primero con una noticia.
+```{r}
+
+noticia <-  read_html(links_completos[1])
+
+```
+
+Ya tenemos el html del primer link. 
+
+Ahora nos queda capturar los distintos elementos.
+
+Tomaremos: 
+
+-Titulo
+
+-Cuerpo del texto
+
+-Fecha
+
+-Autor
+
+-Link
+
+Buscamos el titulo
+```{r}
+
+titulo <- noticia %>% 
+  html_element("h1") %>% 
+  html_text() %>% 
+  str_squish()
+
+print(titulo)
+```
+
+Cuerpo del texto
+```{r}
+
+cuerpo <- noticia %>% 
+  html_element("p.paragraph") %>% 
+  html_text() %>% 
+  str_squish()
+
+print(cuerpo)
+
+```
+
+Capturamos la fecha:
+
+```{r}
+
+fecha  <- noticia %>% 
+  html_element("span.sharebar-article-date") %>% 
+  html_text() %>% 
+  str_squish()
+
+print(fecha)
+```
+
+Autor
+```{r}
+autor  <- noticia %>% 
+  html_element("span.author-name") %>% 
+  html_text() %>% 
+  str_squish()
+print(autor)
+
+```
+
+Creamos la tabla final
+```{r}
+
+df_noticia <- as.data.frame(cbind("Titulo" = titulo, "Texto"= cuerpo,
+                                  "Fecha" = fecha, "Autor" = autor,
+                                  "Link" = links_completos[1]))
+
+
+```
+
+Podemos dividir las secciones en 3.
+Una primera parte para obtener los links que necesitamos de una página dinámica.
+Es importante mencionar que a veces RSelenium va más rápido de lo que se cargan los datos.
+Por este motivo, es necesario darle tiempo con Sys.sleep()
+```{r}
+
+rd <- rsDriver(browser = "firefox",
+               chromever = NULL,
+               port= 4457L)
+
+remDr <- rd[["client"]]
+
+
+
+remDr$navigate("https://www.infobae.com/")
+
+remDr$maxWindowSize()
+
+Sys.sleep(10)
+
+
+remDr$findElements("id", "onesignal-slidedown-cancel-button")[[1]]$clickElement()
+
+Sys.sleep(3)
+
+remDr$findElements("id", "hamburger-icon")[[1]]$clickElement()
+
+Sys.sleep(2)
+
+remDr$findElements("id", "search-icon")[[1]]$clickElement()
+
+
+Sys.sleep(2)
+
+search_bar <- remDr$findElement(using = "id", value = "queryly_query")
+
+Sys.sleep(2)
+
+search_bar$sendKeysToElement(list("web scraping"))
+
+Sys.sleep(5)
+
+remDr$executeScript("window.scrollTo(0, document.body.scrollHeight);")
+
+Sys.sleep(5)
+
+remDr$executeScript("window.scrollTo(0, document.body.scrollHeight);")
+
+Sys.sleep(5)
+
+page_source <- remDr$getPageSource()[[1]]
+
+Sys.sleep(3)
+
+page <- read_html(page_source)
+
+
+titles <- page %>% html_nodes("div.queryly_item_title") %>% 
+  html_text() %>% 
+  str_squish()
+
+links <- page %>% 
+  html_nodes("div.queryly_item_title") %>% 
+  html_elements("a") %>% 
+  html_attr("href") 
+
+links <- links[!duplicated(links) ]
+
+raiz <- "https://www.infobae.com"
+
+links_completos <- str_c(raiz, links)
+
+
+```
+
+En segundo lugar, la creación de la función para la obtención de los datos.
+```{r}
+
+tabla_noticias <- function(links){
+  
+  
+  noticia <- read_html(links)
+  
+  titulo <- noticia %>% 
+    html_element("h1") %>% 
+    html_text() %>% 
+    str_squish()
+  
+  cuerpo <- noticia %>% 
+    html_element("p.paragraph") %>% 
+    html_text() %>% 
+    str_squish()
+  
+  
+  fecha  <- noticia %>% 
+    html_element("span.sharebar-article-date") %>% 
+    html_text() %>% 
+    str_squish()
+  
+  autor  <- noticia %>% 
+    html_element("span.author-name") %>% 
+    html_text() %>% 
+    str_squish()
+  
+  web <- links
+  
+  tabla_final <- as.data.frame(cbind("titulo"=titulo, "autor" = autor,  "cuerpo"=cuerpo,
+                                     "fecha" = fecha, "Link" = web
+  ))
+  
+  return(tabla_final)
+  
+}
+
+```
+
+Por último, la iteración sobre todos los links.
+
+Podemos agregar mensajes que indique por dónde va la función:
+```{r}
+
+noticias <- tibble(
+  titulo=character(),
+  cuerpo=character(),
+  fecha=character(),
+  autor= character()
+)
+
+print(paste("Se encontraron", length(links_completos), "noticias\n"))
+
+
+for(i in 1:length(links_completos)){
+  
+  print(paste("Obteniendo información de noticia:\n ",links_completos[i]))
+  
+  resultado <- tabla_noticias(links_completos[i])
+  
+  noticias <- noticias %>% 
+    bind_rows(resultado)
+  
+}
+
+```
+
+```{r}
+
+print(head(noticias))
+```
+
+## Instagram
+### read_html_live()
+
+```{r}
+url <- "https://www.instagram.com/bachilleratopopularcasabierta/"
+
+```
+
+
+Leemos la página
+```{r}
+ig_casa <- rvest::read_html_live(url)
+
+```
+
+Podemos explorar el elemento para ver qué tiene dentro.
+```{r}
+ls(ig_casa)
+
+
+```
+```{r}
+
+ig_casa_list <- as.list(ig_casa)
+
+```
+
+
+Los posteos están en body, dentro de html elements. Tenemos que pasarlos a text
+```{r}
+
+posteos <- ig_casa$html_elements("body")[3] %>% 
+  html_text2()
+
+
+```
+
+
+
+```{r}
+
+posts <- unlist(strsplit(posteos, "\n"))
+posts <- trimws(posts)
+posts <- posts[posts != ""]
+```
+
+```{r}
+
+df_posts <- data.frame(
+  Post = seq_along(posts),  # Número del post
+  Contenido = posts,        # Texto del post
+  stringsAsFactors = FALSE
+)
+
+```
+
+```{r}
+ig_casa$session$close()
+
+
+```
+## Otras páginas dinámicas con read_html_live()
+
+Supongamos que queremos descargar una tabla de una página dinámica.
+Si utilizamos rvest de manera "clásica" no vamos a conseguir la información.
+```{r}
+
+estatica <- read_html("https://www.forbes.com/top-colleges/")
+
+```
+Vemos que el resultado es nulo
+```{r}
+
+estatica %>% html_elements(".CustomTable_container__CkQ96")
+
+
+```
+
+Si utilizamos la función para páginas dinámicas, logramos descargar la tabla de manera adecuada
+```{r}
+
+dinamica <- read_html_live("https://www.forbes.com/top-colleges/")
+
+```
+
+
+```{r}
+
+dinamica$view()
+
+```
+
+Ahora buscamos el elemento con el finder y vemos que podemos descargar la tabla de manera adecuada.
+```{r}
+
+filas <- dinamica %>% 
+  html_elements(".CustomTable_container__CkQ96") %>% 
+  html_table()
+```
+
+La convertimos en data frame.
+```{r}
+tabla <- as.data.frame(filas)
+
+```
+
+## Rcrawler
+```{r}
+#install.packages("Rcrawler", dependencies = TRUE)
+library(Rcrawler)
+
+```
+
+Rcrawler nos sirve para descargar una página web completa.
+Hay que tener cuidado porque existen páginas muy pesadas.
+La libraría va a crear una carpeta con todas las paginas html.
+```{r}
+
+Rcrawler(Website = "https://quotes.toscrape.com", 
+         no_cores = 4, # numero de procesos que ejecutará la tarea
+         no_conn = 4) # numero de conexiones simultaneas
+
+```
+
+Con la función ListProjects() podemos ver la lista de proyectos.
+```{r}
+ListProjects()
+
+```
+
+Obtener TODOS los links de una página web.
+```{r}
+
+links<-ContentScraper(Url = "https://quotes.toscrape.com", 
+                      XpathPatterns = "//*/a/@href" ,
+                      ManyPerPattern = TRUE)
+
+unlist(links)
+
+```
+
+
+
+Descargar todos los titulos
+```{r}
+
+Rcrawler(Website = "https://quotes.toscrape.com", no_cores = 4, no_conn = 4, 
+         ExtractCSSPat = c(".author-title"), PatternsNames = c("title"))
+
+```
+
+Descargar las descripciones de los autores
+```{r}
+
+Rcrawler(Website = "https://quotes.toscrape.com", no_cores = 4, no_conn = 4, 
+         ExtractCSSPat = c(".author-description"))
+
+```
+
+```{r}
+
+Rcrawler(Website = "https://quotes.toscrape.com", no_cores = 4, no_conn = 4, 
+         ExtractCSSPat = c(".author-title",".author-description"), PatternsNames = c("title",
+                                                                                     "description"))
+
+```
+

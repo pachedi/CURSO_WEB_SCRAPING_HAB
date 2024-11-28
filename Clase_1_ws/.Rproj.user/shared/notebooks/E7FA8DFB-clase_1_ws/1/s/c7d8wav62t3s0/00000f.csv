@@ -1,0 +1,4 @@
+"0",""
+"0","link <- ""https://www.anagrama-ed.es/libro/compendium/cuentos/9788433924216/CP_7"""
+"0","resultado <- tabla_libro(link)"
+"0","print(resultado)"

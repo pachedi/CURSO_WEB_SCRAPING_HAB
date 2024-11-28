@@ -1,0 +1,4 @@
+"0","revistas_tidy %>%"
+"0","        group_by(word) %>%"
+"0","        summarise(n=n()) %>%"
+"0","        arrange(desc(n))"

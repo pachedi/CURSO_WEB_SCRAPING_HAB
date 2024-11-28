@@ -1,0 +1,4 @@
+"0","  stop_words <- as.data.frame(readLines(""./data/stopwords.txt"", encoding = ""utf-8"")) %>% 
+    rename(word= 1)
+"
+"2","Warning: incomplete final line found on './data/stopwords.txt'"

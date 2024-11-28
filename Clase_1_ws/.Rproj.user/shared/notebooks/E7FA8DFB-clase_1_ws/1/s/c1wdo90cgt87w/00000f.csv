@@ -1,0 +1,6 @@
+"0","biografia <- descarga %>% "
+"0","  html_element(""#col_right"") %>% "
+"0","  html_element(""div.textContent"") %>% "
+"0","  html_text2()"
+"0",""
+"0",""

@@ -1,0 +1,5 @@
+"0",""
+"0","Sys.sleep(5)"
+"0","remDr$findElements(""id"", ""onesignal-slidedown-cancel-button"")[[1]]$clickElement()"
+"0",""
+"0",""

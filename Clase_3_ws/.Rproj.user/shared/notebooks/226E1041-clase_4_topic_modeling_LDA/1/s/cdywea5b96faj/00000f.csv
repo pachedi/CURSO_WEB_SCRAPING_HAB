@@ -1,0 +1,14 @@
+"0","disc_dtm <- word_counts %>%"
+"0","                cast_dtm(id, word, n)"
+"0",""
+"0","disc_dtm"
+"1","<<DocumentTermMatrix (documents: 3930, terms: 111484)>>
+"
+"1","Non-/sparse entries: 889157/437242963
+"
+"1","Sparsity           : 100%
+"
+"1","Maximal term length: NA
+"
+"1","Weighting          : term frequency (tf)
+"

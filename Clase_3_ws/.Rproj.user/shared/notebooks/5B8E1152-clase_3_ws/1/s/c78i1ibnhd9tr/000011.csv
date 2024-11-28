@@ -1,0 +1,7 @@
+"0",""
+"0","df_posts <- data.frame("
+"0","  Post = seq_along(posts),  # Número del post"
+"0","  Contenido = posts,        # Texto del post"
+"0","  stringsAsFactors = FALSE"
+"0",")"
+"0",""

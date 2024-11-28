@@ -1,0 +1,503 @@
+---
+title: "Clase 1 - R web scraping"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_collapsed: true
+    toc_depth: 3
+    #number_sections: true
+    theme: lumen
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introducción a Web Scraping con R
+
+-Características generales de web scraping
+-Dimensión ética del WS
+-Extracción de datos
+
+```{r warning=F}
+library(rvest)
+library(stringr)
+library(readr)
+library(tidyverse)
+```
+
+El web scraping o "rascado" nos permite extraer datos publicados en un sitio web rascando el código html parar obtener tablas con texto, links, fechas, imágenes etc.
+
+## HTML
+Es necesario que trabajemos previamente cuáles son los elementos principales de una web desarrollada en html.
+
+HTML significa Hyper text markup Language
+
+Los elementos son los siguientes:
+
+### h1
+
+<h1> Es el elemento de título que se va a mostrar más grande </h1>
+
+### p
+
+<p> Lo que está dentro de "p" servirá para conformar párrafos</p>
+
+### h2
+
+<h2> h2 refiere a un título igual que h1 pero más chico </h2>
+<h2> acá hay otro título más pequeño </h2>
+### ol
+
+<ol> ol refiere a "ordered list", es decir una lista ordenada que va a contener distintos elementos ordenados por li
+
+<li>Elemento uno</li>
+<li>Elemento dos </li>
+<li>Elemento tres </li>
+
+</ol>
+
+### div
+
+<div> Div nos va a dividir las secciones el código </div>
+
+### a
+
+<a> a va a introducir links www.hackaboss.com </a>
+
+
+### Etiquetas
+
+Las etiquetas rodean al texto por ejemplo un texto rodeado por etiquetas h1 será un título. El mismo texto rodeado por etiquetas h2 será un subtítulo, etc.
+El etiquetado va a definir la estructura del documento html.
+
+## CSS
+
+CSS significa "cascade style sheets" y se va a ocupar de cuestiones más bien estéticas como puede ser el estilo de la tipografía, el color, etc.
+Ahora bien, es posible que tengamos muchos elementos etiquetados de la misma manera (como pueden ser dos títulos h2) pero queremos darle estilos distintos.
+En relación al estilo, CSS nos permite crear "clases" si quisiéramos diferenciar dos elementos que tienen la misma etiqueta. En este caso utilizamos "class"
+
+### class
+
+<h2 class="header-1"> h2 refiere a un título igual que h1 pero más chico </h2>
+
+
+<h2 class="header-2"> acá hay otro título más pequeño </h2>
+
+Ahora tenemos dos subtítulos que son iguales pero que tienen distinta clase por lo que podemos diferenciarlos. 
+En general, el contenido de las páginas web está etiquetado por lo que podemos buscar una clase particular para scrapearla. Por este motivo es importante comprender la diferencia entre un elemento html y su clase.
+Suponiendo que lo anterior es una página web html, si quisiera scrapear todos los encabezados h2 iría a buscar esa etiqueta. Ahora bien, si quisiera una clase en particular puedo realizar esa aclaración y ser más preciso en mi scrapeo. 
+
+
+### ids
+
+Los ids se pueden utilizar sólo una vez y suelen usarse para identificar secciones. Este id se puede identificar ya que viene luego de un #.
+Esto es muy útil para el scrping ya que si identificamos el id que necesitamos, podremos descargar la sección específica que estamos buscando.
+
+### Resumen
+
+Una página web es un documento de texto html con contenido etiquetado.
+Las etiquetas nos permiten distinguir elementos, clases e ids (si es que lo tienen)
+
+## Dimensión ética
+
+Es importante considerar la dimensión ética del web scraping. Esto implica que además de preguntarse si algo el viáble en términos técnicos, si es que es correcto considerando derechos de autor. Muchas veces podemos obtener esta información en los términos y condiciones de uso de la página.
+
+
+## Extracción
+
+El Web scraping entonces nos sirve para extraer información de una página web para la conformación de un corpus textual.
+
+### Identificación de los elementos
+
+Para identificar la estructura HTML de la página, necesitaremos utilizar herramientas de desarrollador. Para acceder a estas herramientas usamos ctrl+shit+i .
+Al presionar estas teclas, veremos que se abre un panel en el navegador con el formato de la página.
+Otra manera de acceder a este panel es haciendo click derecho --> "Inspeccionar elemento"
+Verán que cuando pasamos el mouse por los distintos elementos, se van a ir marcando
+
+A su vez, podemos buscar un elemento apretando en el botón "buscar un elemento" que está en la parte superior izquierda de las herramientas para desarrollador. 
+
+
+## Inicio de Web Scraping
+Supongamos que queremos obtener información sobre discursos de asunción presidenciales.
+Vamos a la siguiente página:
+https://www.lamoncloa.gob.es/presidente/intervenciones/Paginas/2023/prsp15112023.aspx
+En primer lugar, vamos a descargar la página en html con la función:
+
+read_html()
+Lo que va a hacer esta función es descargar toda la estructura html de la página que le indicamos.
+
+```{r}
+
+html_discurso <- read_html("https://www.lamoncloa.gob.es/presidente/intervenciones/Paginas/2023/prsp15112023.aspx",encoding = "UTF-8")
+
+```
+
+Luego, vamos a buscar el elemento que contiene el texto que nosostros queremos descargar.
+En este caso, su id es Justificado.
+Para descargar este texto, utilizaremos una nueva función llamada "html_element()"
+Existe otra función llamada "html_elements()" que sirve para descargar todos los elementos de una determinada clase o etiqueta.
+Le ponemos . delante cuando es un elemento css
+```{r}
+
+discurso <- html_discurso %>% 
+  html_element("p.Justificado") 
+
+
+```
+
+Lo que hicimos en este caso fue descargar toda la estructura html de la página y apuntar hacia el elemento con id MainContent y separarlo en un nuevo elemento.
+¿Podemos acceder al texto?
+```{r}
+print(discurso)
+
+```
+Tal como podemos observar, si bien distinguimos que hay párrafos, el objeto contiene muchas etiquetas y continúa en formato html.
+Para convertirlo en texto, vamos a utilizar una nueva función llamada html_text2()
+Existe también la función html_text()
+La principal diferencia es que html_text2 respeta la estructura de los párrafos mientras que html_text() deja todo el texto de manera continua. Vamos a respetar los párrafos.
+```{r}
+
+texto_plano <- discurso %>% 
+  html_text2()
+
+```
+
+Probemos imprimir este objeto:
+```{r}
+
+print(texto_plano)
+
+```
+
+¿Qué pasó?
+Descargó correctamente el elemento "Justificado" pero tomó sólo el primero. Por este motivo debemos utilizar html_elements()
+```{r}
+
+discurso <- html_discurso %>% 
+  html_elements("p.Justificado") %>% 
+  html_text2()
+
+```
+
+
+```{r}
+print(discurso)
+
+```
+
+Ahora podemos crear un directorio y guardarlo.
+
+```{r}
+
+dir.create("./discursos")
+write_lines(discurso, "./discursos/discurso.txt")
+
+```
+
+## Actividad:
+Scrapear el discurso de asunción de Claudia Shienbaum en:
+https://www.gob.mx/presidencia/articulos/version-estenografica-toma-de-protesta-de-claudia-sheinbaum-como-presidenta-constitucional-de-los-estados-unidos-mexicanos
+
+```{r}
+
+pagina_mx <- read_html("https://www.gob.mx/presidencia/articulos/version-estenografica-toma-de-protesta-de-claudia-sheinbaum-como-presidenta-constitucional-de-los-estados-unidos-mexicanos", encoding = "UTF-8")
+
+```
+
+
+```{r}
+
+extraer_texto <- pagina_mx %>% 
+  html_elements("div.article-body") %>% 
+  html_text()
+
+```
+
+
+```{r}
+
+print(extraer_texto)
+
+```
+
+
+Vemos que existen dobles saltos de línea que no son cómodos para la lectura.
+Podemos reemplazarlos por un salto de línea simple.
+```{r}
+
+
+extraer_texto <- str_replace_all(extraer_texto, pattern = "\r\n", replacement = "\n")
+extraer_texto <- str_replace_all(extraer_texto, pattern = "\n\n", replacement = "\n")
+```
+
+
+```{r}
+
+write_lines(extraer_texto, "./discursos/claudia.txt")
+
+```
+
+
+```{r}
+extraer_texto
+```
+
+## Almacenar información en un Data frame
+
+En 2do lugar lo que vamos a hacer es descargar distintos fragmentos de una página y almacenarlos en un data frame.
+Trabajemos con una editorial de libros.
+"https://www.anagrama-ed.es"
+Vamos a descargar la información de un libro de F. Engels
+https://www.anagrama-ed.es/autor/proust-marcel-870
+En primer lugar, leemos la página html
+```{r}
+
+descarga <- read_html("https://www.anagrama-ed.es/libro/panorama-de-narrativas/albertine-desaparecida/9788433931320/PN_132")
+
+
+```
+
+
+Identificamos la información en la página.
+Nos interesa:
+-Autor
+
+-Biografía
+
+-Título del libro
+
+-ISBN
+
+-Fecha de publicación
+
+-Cantidad de páginas
+
+-Editorial
+
+-Precio
+
+Identifiquemos los fragmentos:
+###Titulo
+
+Si bien la clase completa es no-margin titulo-libro t36px, nos quedaremos sólo con la clase clave sin tener en cuenta las indicaciones de estilo.
+```{r}
+
+titulo <- descarga %>% 
+  html_element("h1.titulo-libro") %>% 
+  html_text2() 
+
+
+```
+
+
+### Biografia
+
+Si buscamos el elemento que contiene la clase textContent podemos ir a buscar al texto.
+```{r}
+
+biografia <- descarga %>% 
+  html_element("div.textContent") %>% 
+  html_text2()
+
+```
+
+¿Qué sucedió? Existe otro texto con la misma clase que está en un fragmento antes por lo cual, R toma el 1er fragmento que encuentra.
+Esto nos obliga a realizar una aclaración previa.
+Primero darle el id (sabemos que hay uno sólo por sección) y luego pedirle la sección que encontramos. De esta manera, encontramos el fragmento adecuado.
+```{r}
+biografia <- descarga %>% 
+  html_element("#col_right") %>% 
+  html_element("div.textContent") %>% 
+  html_text2()
+
+
+```
+
+### Autor
+```{r}
+autor <- descarga %>% 
+  html_element("#col_right") %>% 
+  html_element("p.t24px") %>% 
+  html_text2()
+
+
+```
+
+
+### Tabla
+
+Podemos descargar una tabla con la función html_table()
+
+
+```{r}
+
+tabla_info <- descarga %>% 
+        html_element("table.no-print") %>% 
+        html_table()
+
+tabla_info
+
+```
+
+Las tildes nos traen problemas de formato. Por este motivo, utilizamos clean_names() de janitor
+```{r}
+
+tabla_info2 <- tabla_info%>%
+        pivot_wider(names_from = "X1", values_from = "X2") %>%
+        janitor::clean_names() %>% 
+        rename("precio" = "pvp_con_iva",
+               "paginas" = "num_de_paginas",
+               "fecha_publicacion" = "publicacion") %>%
+        dplyr::select(-codigo)
+
+```
+
+Ahora combinamos todas las columnas para crear una tabla:
+
+```{r}
+ 
+tabla_final <- as.data.frame(cbind("Autor" = autor,"Biografi"=biografia,
+                                   tabla_info2))
+
+```
+
+
+
+## Convertir en función
+```{r}
+
+tabla_libro <- function(link){
+
+  descarga <- read_html(link)
+  
+  titulo <- descarga %>% 
+    html_element("h1.titulo-libro") %>% 
+    html_text2() 
+  
+  biografia <- descarga %>% 
+    html_element("#col_right") %>% 
+    html_element("div.textContent") %>% 
+    html_text2()
+  
+  autor <- descarga %>% 
+    html_element("#col_right") %>% 
+    html_element("p.t24px") %>% 
+    html_text2()
+  
+  tabla_info <- descarga %>% 
+          html_element("table.no-print") %>% 
+          html_table()
+  
+  tabla_info2 <- tabla_info%>%
+          pivot_wider(names_from = "X1", values_from = "X2") %>%
+          janitor::clean_names() %>% 
+          rename("precio" = "pvp_con_iva",
+                 "paginas" = "num_de_paginas",
+                 "fecha_publicacion" = "publicacion") %>%
+          dplyr::select(-codigo)
+  
+  tabla_final <- as.data.frame(cbind("Autor" = autor,"Biografia"=biografia,
+                                     tabla_info2))
+  
+  return(tabla_final)
+}
+
+
+```
+
+
+```{r}
+
+link <- "https://www.anagrama-ed.es/libro/compendium/cuentos/9788433924216/CP_7"
+resultado <- tabla_libro(link)
+print(resultado)
+```
+
+### Obtener un conjunto de links
+
+Ahora, supongamos que queremos continuar un paso más en la automatización del scraping. Podríamos entrar a la página de un autor, capturar todos los links de sus libros y apilar las filas.
+Buscaremos el elemento "a" y el atributo "href" que tiene refiere a páginas web.
+Veamos qué obtenemos.
+```{r}
+
+links <- c()
+
+pagina <- read_html("https://www.anagrama-ed.es/autor/almodovar-pedro-38")
+
+
+libros <- pagina %>% 
+  html_elements("div.libro-vertical__portada") %>% 
+  html_elements("a") %>%
+  html_attr("href")
+
+print(libros)
+```
+
+Vemos que obtenemos la parte final del link para cada libro.
+Por este motivo, debemos agregar la raiz de la página para obtener el link entero.
+```{r}
+
+raiz <- "https://www.anagrama-ed.es"
+
+libros_link <- str_c(raiz, libros)
+
+for (i in libros_link){
+  print(i)
+}
+
+```
+
+```{r}
+
+
+tabla_libro(libros_link[1])
+
+
+```
+
+
+```{r}
+
+books <- tibble(
+                Autor=character(),
+                Biografia=character(),
+                isbn=character(),
+                ean=character(),
+                precio= character(),
+                paginas=character(),
+                coleccion=character(),
+                fecha_publicacion = character(),
+                otras_ediciones = character()
+                )
+
+for(i in libros_link){
+  
+  resultado <- tabla_libro(i)
+
+  books <- books %>% 
+    bind_rows(resultado)
+  
+}
+print(books)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

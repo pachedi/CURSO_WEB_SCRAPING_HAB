@@ -1,0 +1,5 @@
+"0",""
+"0","dir.create(""./discursos"")"
+"2","Warning: '.\discursos' already exists"
+"0","write_lines(discurso, ""./discursos/discurso.txt"")"
+"0",""

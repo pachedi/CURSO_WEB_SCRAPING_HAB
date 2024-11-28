@@ -1,0 +1,5 @@
+"0",""
+"0","posteos <- ig_casa$html_elements(""body"")[3] %>% "
+"0","  html_text2()"
+"0",""
+"0",""

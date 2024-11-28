@@ -1,0 +1,2 @@
+"0","revistas <- revistas %>%"
+"0","          mutate(text = str_replace_all(text, '[[:digit:]]+', ''))"

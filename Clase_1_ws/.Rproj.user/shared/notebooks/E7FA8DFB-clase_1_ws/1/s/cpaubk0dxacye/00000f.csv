@@ -1,0 +1,4 @@
+"0",""
+"0",""
+"0","extraer_texto <- str_replace_all(extraer_texto, pattern = ""\r\n"", replacement = ""\n"")"
+"0","extraer_texto <- str_replace_all(extraer_texto, pattern = ""\n\n"", replacement = ""\n"")"

@@ -1,0 +1,6 @@
+"0",""
+"0","tabla_info <- descarga %>% "
+"0","        html_element(""table.no-print"") %>% "
+"0","        html_table()"
+"0",""
+"0","tabla_info"

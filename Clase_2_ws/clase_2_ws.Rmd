@@ -1,0 +1,592 @@
+---
+title: "Clase 2 - R web scraping"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_collapsed: true
+    toc_depth: 3
+    #number_sections: true
+    theme: lumen
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Scrapear un sitio de noticias.
+
+Vamos a buscar ahora crear un programa de scraping en un sitio de noticias y luego obtener las palabras más frecuentes.
+Primero cargamos las librerías necesarias.
+```{r}
+
+require(rvest)
+require(tidyverse)
+require(here)
+require(openxlsx)
+require(pander)
+require(xml2)
+require(RVerbalExpressions)
+require(rapport)
+require(wordcloud2)
+library(tidytext)
+library(htmlwidgets)
+require(openxlsx)
+
+```
+
+Luego, lo que buscaremos es realizar una búsqueda en la página.
+Utilizaremos el diario de pontevedra
+```{r}
+
+raiz <- "https://www.diariodepontevedra.es"
+
+```
+
+
+
+Si realizamos una búsqueda, veremos que la página tiene el siguiente formato:
+raiz + tags/palabras/
+En nuestro caso elegimos buenos aires (recordar que las palabras deben estar separadas por "-")
+```{r}
+
+busqueda <- paste0(raiz,"tags/" ,"buenos-aires")
+
+```
+Existe un nuevo inconveniente:
+No entran todas las noticias en una sola página.
+Por este motivo, debemos considerar la cantidad de páginas existentes.
+La estructura será la siguiente:
+
+https://www.diariodepontevedra.es/tags/buenos-aires/?page=2
+
+https://www.diariodepontevedra.es/tags/buenos-aires/?page=3
+
+etc...
+Ahora que tenemos la estructura, vamos a buscar el rango de páginas necesario.
+```{r}
+
+pagina <- "https://www.diariodepontevedra.es/tags/buenos-aires"
+
+lectura <- read_html(pagina)
+
+#numeros <- lectura %>% 
+#  html_elements("div.text-center clearfix w-100 my-4")
+  
+max_pag <- lectura %>%
+  html_nodes(".pagination a") %>%  
+  html_text() 
+  as.numeric() %>%              
+  max(na.rm = TRUE) 
+  
+print(max_pag)
+  
+```
+
+```{r}
+pagina_base <- "https://www.diariodepontevedra.es/tags/buenos-aires?page="
+
+max_pag <- 1
+
+repeat {
+  
+  pagina_actual <- paste0(pagina_base, max_pag)
+  
+  lectura <- tryCatch(read_html(pagina_actual), 
+                          error = function(e) NULL)
+  
+  if (is.null(lectura) || length(lectura %>% 
+                                 html_nodes(".pagination a") %>% 
+                                 html_text() 
+                                 %>% 
+                                 as.numeric()) == 0) {
+    max_pag <- max_pag - 1  # Última página válida
+    
+    break
+  }
+  
+  max_pag <- max_pag + 1
+}
+
+print(max_pag)
+
+```
+
+
+
+Encontramos que el número máximo es 4. Por lo cual tendremos que entrar a 4 páginas con rango de 1 a 4
+https://www.diariodepontevedra.es/tags/buenos-aires/?page=1
+Busquemos los links en la página.
+```{r}
+
+
+paginas <- read_html("https://www.diariodepontevedra.es/tags/buenos-aires/?page=1") %>%
+  html_elements("h2.title") %>% 
+  html_elements("a") %>% 
+  html_attr("href")
+
+paginas
+
+
+```
+
+Ahora que encontramos la manera de obtener los links por página, podemos realizar una iteración.
+```{r}
+
+links <- c()
+
+for(i in 1:max_pag){
+  
+ paginas <- read_html(paste0("https://www.diariodepontevedra.es/tags/buenos-aires/?page=",i)) %>%
+   html_elements("h2.title") %>% 
+   html_elements("a") %>% 
+   html_attr("href")
+
+ links <- append(links, paginas)
+
+}
+print(links)
+```
+
+Le agregamos la raiz a los links.
+```{r}
+
+links_completos <- str_c(raiz, links)
+links_completos
+```
+
+Ahora tenemos que realizar el mismo proceso que antes:
+Buscar la información que queremos y crear la tabla con nuestras noticias.
+Supongamos que queremos: titulo, resumen, autor, cuerpo del texto, link, fecha.
+```{r}
+
+noticia <-  read_html(links_completos[1])
+
+```
+
+## Titulo
+```{r}
+
+titulo <- noticia %>% 
+  html_element("h1.title") %>% 
+  html_text() %>% 
+  str_squish()
+
+```
+
+## Resumen
+```{r}
+
+resumen <-  noticia %>% 
+  html_element("div.summary") %>% 
+  html_text() %>% 
+  str_squish()
+
+```
+
+## Cuerpo del texto
+```{r}
+
+cuerpo <- noticia %>% 
+  html_elements("p") %>% 
+  html_text() %>% 
+  str_squish() %>% 
+  paste(collapse = '\"', "") 
+
+cuerpo <- gsub('\\"', "", cuerpo)
+```
+
+## Fecha
+```{r}
+
+fecha  <- noticia %>% 
+  html_element("span.content-meta-date-created") %>% 
+  html_text() %>% 
+  str_squish()
+
+
+```
+
+## Autor
+```{r}
+
+autor  <- noticia %>% 
+  html_element("span.author-name") %>% 
+  html_text() %>% 
+  str_squish()
+
+```
+
+## Creamos la función
+```{r}
+
+tabla_noticias <- function(links){
+
+  
+  noticia <- read_html(links)
+  
+  titulo <- noticia %>% 
+    html_element("h1.title") %>% 
+    html_text() %>% 
+    str_squish()
+  
+  resumen <-  noticia %>% 
+    html_element("div.summary") %>% 
+    html_text() %>% 
+    str_squish()
+  
+  cuerpo <- noticia %>% 
+    html_elements("p") %>% 
+    html_text() %>% 
+    str_squish() %>% 
+    paste(collapse = '\"', "") 
+  
+  cuerpo <- gsub('\\"', "", cuerpo)
+  
+  fecha  <- noticia %>% 
+    html_element("span.content-meta-date-created") %>% 
+    html_text() %>% 
+    str_squish()
+  
+  autor  <- noticia %>% 
+    html_element("span.author-name") %>% 
+    html_text() %>% 
+    str_squish()
+
+  tabla_final <- as.data.frame(cbind("titulo"=titulo, "autor" = autor, "resumen"=resumen,  "cuerpo"=cuerpo,
+                                     "fecha" = fecha
+                                     ))
+  
+  return(tabla_final)
+
+}
+
+```
+
+
+```{r}
+
+noticias <- tibble(
+                titulo=character(),
+                resumen=character(),
+                cuerpo=character(),
+                fecha=character(),
+                autor= character()
+                )
+
+for(i in 1:length(links_completos)){
+  
+  resultado <- tabla_noticias(links_completos[i])
+
+  noticias <- noticias %>% 
+    bind_rows(resultado)
+  
+}
+
+
+print(noticias)
+
+```
+
+## Podemos crear una nube de palabras sencilla a partir de la columna cuerpo
+```{r}
+
+
+nube <- function(tabla){
+
+  tabla_2 <- tabla %>% 
+    select(cuerpo)
+    
+  tabla_2 <- tabla_2 %>% 
+    mutate(txt = str_to_lower(cuerpo))
+  
+  tabla_2$cuerpo <- gsub("\\.\\(function\\(.*?\\)\\);", "", tabla_2$cuerpo)
+  
+  webs <- rx() %>% 
+      rx_find('http')%>% 
+      rx_anything_but(value = ' ')
+    
+  tabla_2$cuerpo <- gsub(webs, "", tabla_2$cuerpo)
+
+    
+  
+  tabla_2 <- tabla_2 %>% 
+    mutate(txt = str_replace_all(txt, "[[:digit:]]", '')) %>% 
+    select(-1)
+  
+  
+  
+  stop_words <- as.data.frame(readLines("./data/stopwords.txt", encoding = "utf-8")) %>% 
+    rename(word= 1)
+  
+  unigram <- tabla_2 %>% 
+    unnest_tokens(output = word, input= txt, token = "ngrams", n=1) %>% 
+    na.omit() %>% 
+    anti_join(stop_words) 
+  
+  nube_f <- unigram %>% 
+    count(word, sort =TRUE)
+  
+  return(nube_f)
+
+}
+
+nube <-  nube(noticias)
+
+wordcloud2(nube)
+
+```
+
+
+```{r}
+
+grafico <- function(tabla){
+  
+ggplot(tabla[1:20,], aes(x=reorder(word,n), y=n))+
+  geom_col(aes(fill=word),col="black")+
+  coord_flip()+
+  labs(title = paste("Cantidad de menciones en notas"),
+       x="Palabra", y= "Frecuencia",
+       caption="Elaboración propia en base a web scraping del sitio 'Diario de Pontevedra'")+
+  theme_minimal()+
+    theme(legend.position = "none")
+
+}
+
+grafico(nube)
+
+
+```
+
+Si queremos continuar la automatización, al conocer la estructura de búsqueda, podemos pedir una palabra por consulta y construir el link.
+```{r, eval = FALSE}
+
+palabra <- readline("Ingrese la/s palabra/s clave/s: ")
+
+
+if(length(palabra > 1)){
+  
+palabra <- gsub(" ", "-", palabra)
+  
+}
+
+raiz <- "https://www.diariodepontevedra.es"
+
+busqueda <- paste0(raiz,"/tags/" ,palabra)
+
+lectura <- read_html(busqueda)
+  
+max_pag <- lectura %>%
+  html_nodes(".pagination a") %>%  
+  html_text() %>%                
+  as.numeric() %>%              
+  max(na.rm = TRUE) 
+  
+print(max_pag)
+
+
+```
+
+
+
+
+```{r ,eval = FALSE}
+
+buscar_links <- c()
+
+for( i in 1:max_pag){
+
+recolectar_links <- paste0(busqueda, "?page=",i)
+
+paginas <- read_html(recolectar_links) %>%
+  html_elements("h2.title") %>% 
+  html_elements("a") %>% 
+  html_attr("href")
+
+paginas_completas <- str_c(raiz, paginas)
+
+buscar_links <- append(buscar_links, paginas_completas)
+
+}
+  
+```
+
+
+```{r, eval = FALSE}
+
+print(buscar_links)
+
+```
+
+Convertir en función:
+```{r}
+
+obtener_links <- function(){
+  
+  palabra <<- readline("Ingrese la/s palabra/s clave/s: ")
+  
+  if(length(palabra > 1)){
+    
+    palabra <- gsub(" ", "-", palabra)
+    
+  }
+  
+  raiz <- "https://www.diariodepontevedra.es"
+
+  busqueda <- paste0(raiz,"/tags/" ,palabra)
+  
+  #lectura <- read_html(busqueda)
+ #  Busca la pagina más alta 
+  max_pag <- 1
+  
+  repeat {
+    
+    pagina_actual <- paste0(busqueda,"?page=", max_pag)
+    
+    #pagina_base <- "https://www.diariodepontevedra.es/tags/buenos-aires?page="
+    
+    lectura <- tryCatch(read_html(pagina_actual), 
+                            error = function(e) NULL)
+    
+    if (is.null(lectura) || length(lectura %>% 
+                                   html_nodes(".pagination a") %>% 
+                                   html_text() 
+                                   %>% 
+                                   as.numeric()) == 0) {
+      max_pag <- max_pag - 1  # Última página válida
+      
+      break
+    }
+    
+    max_pag <<- max_pag + 1
+  }
+  
+##
+
+  
+  buscar_links <- c()
+  
+  for( i in 1:max_pag){
+  
+    recolectar_links <- paste0(busqueda, "?page=",i)
+    
+    paginas <- read_html(recolectar_links) %>%
+      html_elements("h2.title") %>% 
+      html_elements("a") %>% 
+      html_attr("href")
+    
+    paginas_completas <- str_c(raiz, paginas)
+    
+    buscar_links <- append(buscar_links, paginas_completas)
+  }
+  
+  return(buscar_links)
+  
+}
+
+
+```
+
+Probamos:
+```{r ,eval = FALSE}
+
+links_nuevos <- obtener_links()
+
+print(links_nuevos)
+
+```
+```{r,eval = FALSE}
+
+noticias <- tibble(
+                titulo=character(),
+                resumen=character(),
+                cuerpo=character(),
+                fecha=character(),
+                autor= character()
+                )
+
+for(i in 1:length(links_nuevos)){
+  
+  print(paste("Procesando noticia: ", i))
+  
+  resultado <- tabla_noticias(links_nuevos[i])
+
+  noticias <- noticias %>% 
+    bind_rows(resultado)
+  
+}
+
+
+```
+
+
+
+## TD-IDF
+
+Veamos cuáles son las palabras de mayor frecuencia.
+```{r }
+
+
+noticias_barcelona <- readRDS("./noticias_barcelona.RDS")
+
+palabraS_noticias <- noticias_barcelona %>% 
+  mutate(entry_number = row_number()) %>%
+        unnest_tokens(output = word, 
+                      input = cuerpo) %>%
+        group_by(autor, word) %>%
+        summarise(n = n()) %>%
+        arrange(desc(n)) %>%
+        ungroup()
+
+```
+
+
+Es importante notar que idf y, por lo tanto, tf-idf son cero para estas palabras extremadamente comunes (que en el ejercicio anterior, habíamos eliminado como stopwords). Todas estas son palabras que aparecen en ambas busquedas, por lo que el término idf (que entonces será el logaritmo natural de 1) es cero.
+
+```{r}
+
+noticias_tf_idf <- palabraS_noticias %>%
+  bind_tf_idf(word,autor , n)
+
+
+
+```
+
+
+La frecuencia inversa del documento (y por tanto tf-idf) es muy baja (cercana a cero) para las palabras que aparecen en muchos de los documentos de una colección; así es como este enfoque reduce el peso de las palabras comunes. La idf será un número mayor para las palabras que aparecen en una menor cantidad de documentos de la colección.
+
+Ordenemos la tabla de forma diferente para identificar las palabras más importantes:
+```{r}
+
+noticias_tf_idf %>%
+  arrange(desc(tf_idf))
+
+
+```
+```{r,eval = FALSE}
+
+unique(noticias_madrid$autor)
+
+
+```
+
+
+```{r}
+
+jorge <- noticias_tf_idf %>% 
+  filter(autor == "Jorge de Vivero") %>% 
+  arrange(-tf_idf)
+jorge
+```
+
+
+```{r}
+
+	
+jose <- noticias_tf_idf %>% 
+  filter(autor == "José Castro López")  %>% 
+  arrange(-tf_idf)
+jose
+```
+
+

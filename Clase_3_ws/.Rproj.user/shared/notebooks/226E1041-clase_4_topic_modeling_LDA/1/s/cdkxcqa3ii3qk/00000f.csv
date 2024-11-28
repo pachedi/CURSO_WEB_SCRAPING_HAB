@@ -1,0 +1,3 @@
+"0","revistas <- revistas %>%"
+"0","                mutate(text = stringi::stri_trans_general(text, ""Latin-ASCII""),"
+"0","                       titulo = stringi::stri_trans_general(titulo, ""Latin-ASCII""))"

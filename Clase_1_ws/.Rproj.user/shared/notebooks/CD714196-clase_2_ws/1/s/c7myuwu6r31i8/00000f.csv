@@ -1,0 +1,41 @@
+"0",""
+"0","require(rvest)"
+"0","require(tidyverse)"
+"0","require(here)"
+"2","Loading required package: here
+"
+"2","here() starts at C:/Users/dpach/OneDrive - sociales.UBA.ar/CURSO_WEB_SCRAPING_HAB/Clase_2_ws
+"
+"0","require(openxlsx)"
+"2","Loading required package: openxlsx
+"
+"2","Warning: package ‘openxlsx’ was built under R version 4.2.3"
+"0","require(pander)"
+"2","Loading required package: pander
+"
+"0","require(xml2)"
+"2","Loading required package: xml2
+"
+"2","Warning: package ‘xml2’ was built under R version 4.2.3"
+"0","require(RVerbalExpressions)"
+"2","Loading required package: RVerbalExpressions
+"
+"2","Warning: package ‘RVerbalExpressions’ was built under R version 4.2.3"
+"0","require(rapport)"
+"2","Loading required package: rapport
+"
+"2","Warning: package ‘rapport’ was built under R version 4.2.3"
+"0","require(wordcloud2)"
+"2","Loading required package: wordcloud2
+"
+"2","Warning: package ‘wordcloud2’ was built under R version 4.2.3"
+"2","Registered S3 method overwritten by 'htmlwidgets':
+  method           from         
+  print.htmlwidget tools:rstudio
+"
+"0","library(tidytext)"
+"2","Warning: package ‘tidytext’ was built under R version 4.2.3"
+"0","library(htmlwidgets)"
+"2","Warning: package ‘htmlwidgets’ was built under R version 4.2.3"
+"0","require(openxlsx)"
+"0",""

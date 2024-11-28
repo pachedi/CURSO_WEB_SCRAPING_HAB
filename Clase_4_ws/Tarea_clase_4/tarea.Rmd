@@ -1,0 +1,191 @@
+---
+title: "Clase 4 - R web scraping"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_collapsed: true
+    toc_depth: 3
+    #number_sections: true
+    theme: lumen
+---
+
+# Realizar un modelado de tópicos con el corpus de noticias scrapeado.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r echo=TRUE, results='hide'}
+library(tidyverse)
+library(topicmodels)
+library(tidytext)
+library(tictoc)
+```
+
+
+```{r, echo=F}
+noticias <- readRDS('./Tarea_clase_4/noticias_madrid.RDS')
+
+head(noticias)
+
+```
+
+
+```{r , echo=F}
+
+noticias <- noticias %>%
+                mutate(cuerpo = stringi::stri_trans_general(cuerpo, "Latin-ASCII"),
+                       titulo = stringi::stri_trans_general(titulo, "Latin-ASCII"))
+
+```
+
+
+```{r , echo=F}
+
+noticias <- noticias %>%
+          mutate(id = row_number()) %>% 
+          mutate(text = str_replace_all(cuerpo, '[[:digit:]]+', ''))
+
+```
+
+
+```{r , echo=F}
+
+noticias_tidy <- noticias %>%
+                unnest_tokens(word, cuerpo)
+
+head(noticias_tidy)
+
+```
+
+
+```{r , echo=F}
+
+stop_words <- read_delim('./data/stopwords.txt', 
+                         delim = '\t',
+                         col_names = c('word')) %>%
+                        mutate(word=stringi::stri_trans_general(word, "Latin-ASCII"))
+
+
+## Aquí agregamos algunas palabras al listado de stopwords...
+stop_words <- stop_words %>%
+                bind_rows( tibble(word=c('ano', 'anos', 'ohlala', 'foto', 'the'))) 
+
+## Ahora, las eliminamos 
+noticias_tidy <- noticias_tidy %>%
+                 anti_join(stop_words)
+
+
+noticias_tidy <- noticias_tidy %>%
+          mutate(word = str_replace_all(word, '[[:digit:]]+', '')) %>% 
+          na.omit() %>% 
+          filter(word != "", word !=".", word !="barcelona", 
+                 word != "Barcelona")
+
+```
+
+
+```{r , echo=F}
+
+noticias_tidy %>%
+        group_by(word) %>%
+        summarise(n=n()) %>%
+        arrange(desc(n))
+
+```
+
+
+```{r , echo=F}
+
+word_counts <- noticias_tidy %>%
+        group_by(id, word) %>%
+        summarise(n=n())
+```
+
+
+```{r , echo=F}
+
+disc_dtm <- word_counts %>%
+                cast_dtm(id, word, n)
+
+disc_dtm
+
+```
+
+
+```{r, echo=F}
+
+lda_4 <- LDA(disc_dtm, k=3, control = list(seed = 1234))
+
+```
+
+
+```{r, echo=F}
+
+ap_topics <- tidy(lda_4, matrix = "beta")
+
+ap_topics
+
+unique(ap_topics$topic)
+
+```
+
+
+```{r, echo=F}
+
+ap_top_terms <- ap_topics %>%
+  group_by(topic) %>%
+  slice_max(beta, n = 15) %>% 
+  #ungroup() %>%
+  arrange(topic, -beta)
+
+
+ap_top_terms %>%
+  mutate(term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(beta, term, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales='free_y') +
+  scale_y_reordered() +
+  theme_minimal()
+
+```
+
+
+```{r, echo=F}
+options(scipen = 999)
+doc_2_topics <- tidy(lda_4, matrix = "gamma")
+doc_2_topics %>%
+mutate(gamma = round(gamma, 5))
+  
+```
+
+
+```{r, echo=F}
+
+topicos_wider <- doc_2_topics %>% 
+  pivot_wider( names_from = "topic", values_from = "gamma")
+
+```
+
+
+```{r, echo=F}
+
+noticias_tidy %>%
+  filter(id==97) %>%
+  group_by(id, word) %>%
+  summarise(n=n()) %>%
+  select(word, n) %>%
+  arrange(desc(n))
+```
+
+
+```{r, echo=F}
+noticias %>%
+  filter(id==97) %>%
+  select(text) %>%
+  pull()
+
+```
+
+

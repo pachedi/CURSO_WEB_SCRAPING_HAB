@@ -1,0 +1,35 @@
+
+
+#install.packages("Rcrawler", dependencies = TRUE)
+library(Rcrawler)
+
+Rcrawler(Website = "https://lyceemermoz.edu.ar/", no_cores = 4, no_conn = 4)
+
+
+ListProjects()
+
+MyDATA<-LoadHTMLFiles(ListProjects()[2], type = "vector")
+
+MyDATA[1]
+
+Rcrawler(Website = "https://lyceemermoz.edu.ar/", no_cores = 4, no_conn = 4, ExtractXpathPat = c("//h1","//article"), PatternsNames = c("Title","Content"))
+
+
+Rcrawler( Website = "https://www.kennedy.edu.ar/", 
+          ExtractXpathPat = "//*/a/@href",
+          ManyPerPattern = TRUE)
+# Put all links together within one vector
+
+Allinks<-unlist(lapply(DATA, `[[`, 2))
+
+Allinks
+
+VecTitle<-unlist(lapply(DATA, `[[`, 1))
+
+VecContent<-unlist(lapply(DATA, `[[`, 2))
+
+df<-data.frame(do.call("rbind", DATA))
+
+
+
+

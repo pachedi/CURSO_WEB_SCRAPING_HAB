@@ -1,0 +1,5 @@
+"0","resultado <- tabla_noticias(links_completos[1])"
+"0",""
+"0","noticias <- noticias %>% "
+"0","    bind_rows(resultado)"
+"0",""

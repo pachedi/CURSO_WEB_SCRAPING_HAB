@@ -1,0 +1,16 @@
+"0","library(tidyverse)"
+"0","library(stm)"
+"2","Warning: package ‘stm’ was built under R version 4.2.3"
+"2","Registered S3 method overwritten by 'data.table':
+  method           from
+  print.data.table     
+"
+"2","stm v1.3.7 successfully loaded. See ?stm for help. 
+ Papers, resources, and other materials at structuraltopicmodel.com
+"
+"0","library(topicmodels)"
+"2","Warning: package ‘topicmodels’ was built under R version 4.2.3"
+"0","library(tidytext)"
+"2","Warning: package ‘tidytext’ was built under R version 4.2.3"
+"0","library(tictoc)"
+"2","Warning: package ‘tictoc’ was built under R version 4.2.3"

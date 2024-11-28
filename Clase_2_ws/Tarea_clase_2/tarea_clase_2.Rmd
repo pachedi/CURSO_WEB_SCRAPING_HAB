@@ -1,0 +1,172 @@
+---
+title: "Tarea clase 2 - R web scraping"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_collapsed: true
+    toc_depth: 3
+    #number_sections: true
+    theme: lumen
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+require(rvest)
+require(tidyverse)
+require(here)
+require(openxlsx)
+
+```
+
+# Consigna:
+
+Scrapear todos los libros y su información de un autor elegido en la página: https://sigloxxieditores.com.ar/
+
+Elijo al autor Karl Marx.
+```{r }
+
+pagina_marx <- read_html("https://sigloxxieditores.com.ar/?s=marx&post_type=product")
+
+
+```
+
+Selecciono un libro cualquiera e identifico los elementos:
+-Titulo
+
+-Autor
+
+-Precio
+
+-Biografia
+
+Obtener titulo:
+```{r , echo=F}
+
+pagina_libro <- read_html("https://sigloxxieditores.com.ar/libro/antologia/")
+
+titulo <- pagina_libro %>% 
+  html_element("h1.entry-title") %>% 
+  html_text() %>% 
+  str_squish()
+
+```
+
+Autor :
+```{r , echo=F}
+
+autor <- pagina_libro %>% 
+  html_element("a.author.main") %>% 
+  html_text()
+
+```
+
+Precio:
+```{r , echo=F}
+
+precio <- pagina_libro %>% 
+  html_element("div.price") %>% 
+  html_text() %>% 
+  str_squish()
+
+```
+
+
+```{r , echo=F}
+
+bio <- pagina_libro %>% 
+  html_elements("div.woocommerce-product-details__short-description") %>% 
+  html_elements("p") %>% 
+  html_text() %>% 
+  str_squish()
+
+```
+
+Ahora que tenemos los elementos, buscamos todos los links en la página.
+```{r , echo=F}
+
+links <- pagina_marx %>% 
+  html_elements("h3.wd-entities-title") %>% 
+  html_elements("a") %>% 
+  html_attr("href")
+
+links
+```
+
+Creamos la funcion para scrapear:
+```{r , echo=F}
+
+scrap_SXXI <- function(link){
+  
+  link <- read_html(link)
+  
+  titulo <- link %>% 
+    html_element("h1.entry-title") %>% 
+    html_text() %>% 
+    str_squish()
+  
+  autor <- link %>% 
+    html_element("a.author.main") %>% 
+    html_text()
+  
+  precio <- link %>% 
+    html_element("div.price") %>% 
+    html_text() %>% 
+    str_squish()
+  
+  
+  bio <- link %>% 
+    html_elements("div.woocommerce-product-details__short-description") %>% 
+    html_elements("p") %>% 
+    html_text2() %>% 
+    str_squish() %>% 
+    paste(collapse = " ") 
+  
+    tabla_final <- as.data.frame(cbind("titulo"=titulo, "autor" = autor, "Bio"=bio,  "precio"=precio))
+  
+  return(tabla_final)
+  
+}
+
+  
+```
+
+
+```{r , echo=F}
+
+pagina_marx <- read_html("https://sigloxxieditores.com.ar/?s=marx&post_type=product")
+
+obtiene_links <- pagina_marx %>% 
+  html_elements("h3.wd-entities-title") %>% 
+  html_elements("a") %>% 
+  html_attr("href")
+
+libros <- tibble(
+                titulo=character(),
+                Bio=character(),
+                precio=character(),
+                autor= character()
+                )
+
+for(i in 1:length(obtiene_links)){
+  
+  print(paste("Se encontraron",length(obtiene_links), "libros" ))
+  print(paste("Obteniendo información de libro: ", i))
+  
+  resultado <- scrap_SXXI(obtiene_links[i])
+
+  libros <- libros %>% 
+    bind_rows(resultado)
+  
+}
+
+
+print(libros)
+
+
+```
+
+

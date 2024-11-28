@@ -1,0 +1,7 @@
+"0","titulo <- pagina_libro %>% 
+  html_element(""h1.entry-title"") %>% 
+  html_text()
+"
+"2","Error in UseMethod(""xml_find_first"") : 
+  no applicable method for 'xml_find_first' applied to an object of class ""character""
+"

@@ -1,0 +1,7 @@
+"0","lectura %>%
+  html_nodes("".pagination a"") %>%  
+  html_text() %>%
+  html_attr(""data-total-pages"")
+"
+"2","Error in xml_attr(x, name, default = default) : Unexpected node type
+"

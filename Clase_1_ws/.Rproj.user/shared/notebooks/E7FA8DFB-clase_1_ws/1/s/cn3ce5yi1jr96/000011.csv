@@ -1,0 +1,3 @@
+"0",""
+"0","html_discurso <- read_html(""https://www.lamoncloa.gob.es/presidente/intervenciones/Paginas/2023/prsp15112023.aspx"",encoding = ""UTF-8"")"
+"0",""
