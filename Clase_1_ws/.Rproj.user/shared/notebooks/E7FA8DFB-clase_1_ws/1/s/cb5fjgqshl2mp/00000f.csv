@@ -1,5 +1,0 @@
-"0",""
-"0","extraer_texto <- pagina_mx %>% "
-"0","  html_elements(""div.article-body"") %>% "
-"0","  html_text2()"
-"0",""

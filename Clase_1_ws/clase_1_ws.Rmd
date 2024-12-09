@@ -27,6 +27,13 @@ library(readr)
 library(tidyverse)
 ```
 
+
+```{r}
+
+
+```
+
+
 El web scraping o "rascado" nos permite extraer datos publicados en un sitio web rascando el código html parar obtener tablas con texto, links, fechas, imágenes etc.
 
 ## HTML
@@ -130,7 +137,9 @@ Lo que va a hacer esta función es descargar toda la estructura html de la pági
 
 ```{r}
 
-html_discurso <- read_html("https://www.lamoncloa.gob.es/presidente/intervenciones/Paginas/2023/prsp15112023.aspx",encoding = "UTF-8")
+html_discurso <- read_html("https://www.lamoncloa.gob.es/presidente/intervenciones/Paginas/2023/prsp15112023.aspx" , encoding = "UTF-8")
+
+print(html_discurso)
 
 ```
 
@@ -162,6 +171,8 @@ La principal diferencia es que html_text2 respeta la estructura de los párrafos
 texto_plano <- discurso %>% 
   html_text2()
 
+?html_text2
+
 ```
 
 Probemos imprimir este objeto:
@@ -174,6 +185,8 @@ print(texto_plano)
 ¿Qué pasó?
 Descargó correctamente el elemento "Justificado" pero tomó sólo el primero. Por este motivo debemos utilizar html_elements()
 ```{r}
+
+# html_discurso <- read_html("link.com") 
 
 discurso <- html_discurso %>% 
   html_elements("p.Justificado") %>% 
@@ -192,7 +205,7 @@ Ahora podemos crear un directorio y guardarlo.
 ```{r}
 
 dir.create("./discursos")
-write_lines(discurso, "./discursos/discurso.txt")
+write_lines(discurso, "./discursos/discurso_ps.txt")
 
 ```
 
@@ -204,6 +217,8 @@ https://www.gob.mx/presidencia/articulos/version-estenografica-toma-de-protesta-
 
 pagina_mx <- read_html("https://www.gob.mx/presidencia/articulos/version-estenografica-toma-de-protesta-de-claudia-sheinbaum-como-presidenta-constitucional-de-los-estados-unidos-mexicanos", encoding = "UTF-8")
 
+print(pagina_mx)
+
 ```
 
 
@@ -211,7 +226,7 @@ pagina_mx <- read_html("https://www.gob.mx/presidencia/articulos/version-estenog
 
 extraer_texto <- pagina_mx %>% 
   html_elements("div.article-body") %>% 
-  html_text()
+  html_text() 
 
 ```
 
@@ -234,8 +249,46 @@ extraer_texto <- str_replace_all(extraer_texto, pattern = "\n\n", replacement = 
 
 
 ```{r}
+print(extraer_texto)
+
+```
+
+
+```{r}
+
+extraer_texto <- extraer_texto %>% 
+  str_squish()
+
+
+extraer_texto
+
+```
+
+
+```{r}
 
 write_lines(extraer_texto, "./discursos/claudia.txt")
+
+```
+
+
+```{r}
+
+
+pagina_entera <- read_html("https://www.gob.mx/presidencia/articulos/version-estenografica-toma-de-protesta-de-claudia-sheinbaum-como-presidenta-constitucional-de-los-estados-unidos-mexicanos")
+
+
+elemento_titulo <- pagina_entera %>% 
+  html_element("h1") %>% 
+  html_text()
+
+
+elemento_subtitulo <- pagina_entera %>% 
+  html_element("h2") %>% 
+  html_text()
+
+print(elemento_subtitulo)
+
 
 ```
 
@@ -249,7 +302,7 @@ extraer_texto
 En 2do lugar lo que vamos a hacer es descargar distintos fragmentos de una página y almacenarlos en un data frame.
 Trabajemos con una editorial de libros.
 "https://www.anagrama-ed.es"
-Vamos a descargar la información de un libro de F. Engels
+Vamos a descargar la información de un libro de Proust
 https://www.anagrama-ed.es/autor/proust-marcel-870
 En primer lugar, leemos la página html
 ```{r}
@@ -279,6 +332,7 @@ Nos interesa:
 -Precio
 
 Identifiquemos los fragmentos:
+
 ###Titulo
 
 Si bien la clase completa es no-margin titulo-libro t36px, nos quedaremos sólo con la clase clave sin tener en cuenta las indicaciones de estilo.
@@ -288,7 +342,7 @@ titulo <- descarga %>%
   html_element("h1.titulo-libro") %>% 
   html_text2() 
 
-
+print(titulo)
 ```
 
 
@@ -301,6 +355,14 @@ biografia <- descarga %>%
   html_element("div.textContent") %>% 
   html_text2()
 
+print(biografia)
+
+biografia_2 <- descarga %>% 
+  html_elements("p") %>% 
+  html_text2()
+
+
+print(biografia_2)
 ```
 
 ¿Qué sucedió? Existe otro texto con la misma clase que está en un fragmento antes por lo cual, R toma el 1er fragmento que encuentra.
@@ -312,16 +374,17 @@ biografia <- descarga %>%
   html_element("div.textContent") %>% 
   html_text2()
 
-
+biografia
 ```
 
 ### Autor
 ```{r}
 autor <- descarga %>% 
   html_element("#col_right") %>% 
-  html_element("p.t24px") %>% 
+  html_element("p") %>% 
   html_text2()
 
+autor
 
 ```
 
@@ -329,6 +392,15 @@ autor <- descarga %>%
 ### Tabla
 
 Podemos descargar una tabla con la función html_table()
+
+
+```{r}
+
+tabla_info_2 <- descarga %>% 
+  html_element("#tab-content-info") %>% 
+  html_table()  
+
+```
 
 
 ```{r}
@@ -341,6 +413,8 @@ tabla_info
 
 ```
 
+
+
 Las tildes nos traen problemas de formato. Por este motivo, utilizamos clean_names() de janitor
 ```{r}
 
@@ -352,13 +426,15 @@ tabla_info2 <- tabla_info%>%
                "fecha_publicacion" = "publicacion") %>%
         dplyr::select(-codigo)
 
+print(tabla_info2)
+
 ```
 
 Ahora combinamos todas las columnas para crear una tabla:
 
 ```{r}
  
-tabla_final <- as.data.frame(cbind("Autor" = autor,"Biografi"=biografia,
+tabla_final <- as.data.frame(cbind("Autor" = autor,"Biografia"=biografia,
                                    tabla_info2))
 
 ```
@@ -406,6 +482,17 @@ tabla_libro <- function(link){
 
 
 ```
+
+
+```{r}
+
+link <- "https://www.anagrama-ed.es/libro/panorama-de-narrativas/tierra-de-empusas/9788433929716/PN_1142"
+
+libro_nuevo <- tabla_libro(link = link)
+
+
+```
+
 
 
 ```{r}

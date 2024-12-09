@@ -1,1 +1,0 @@
-{"frames":[{"func":"html_text2()","file":"","line_number":0,"end_line_number":0,"character_number":0,"end_character_number":0}],"message":"Error in UseMethod(\"html_text2\") : \n  no applicable method for 'html_text2' applied to an object of class \"NULL\"\n"}

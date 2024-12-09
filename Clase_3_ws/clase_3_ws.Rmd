@@ -118,6 +118,41 @@ remDr$executeScript("window.scrollTo(0, document.body.scrollHeight);")
 Sys.sleep(5)
 
 ```
+Otra opción:
+```{r}
+
+# Función para desplazarse al final de la página
+scroll_to_bottom <- function(driver, max_attempts = 10, delay = 4) {
+  for (i in 1:max_attempts) {
+    # Obtiene la altura actual de la página
+    previous_height <- remDr$executeScript("return document.body.scrollHeight")
+    
+    # Se desplaza al final
+    remDr$executeScript("window.scrollTo(0, document.body.scrollHeight);")
+    
+    # Esperar en segundos (parámetro de la función)
+    Sys.sleep(delay)
+    
+    # Chequea si la altura cambió
+    new_height <- remDr$executeScript("return document.body.scrollHeight")
+    
+    # Si la altura anterior de la página y la altura actual son igual, para.
+    # También para luego de 10 intentos.
+    if (new_height[[1]] == previous_height[[1]]) {
+      message("Se alcanzó el final de la página.")
+      break
+    }
+  }
+}
+
+# Llamar a la función para desplazarse al final de la página
+scroll_to_bottom(remDr)
+
+
+```
+
+
+
 Volvamos a cargar la página fuente y los títulos. Ahora tenemos todo lo que necesitamos.
 ```{r}
 
@@ -404,6 +439,7 @@ ls(ig_casa)
 
 
 ```
+
 ```{r}
 
 ig_casa_list <- as.list(ig_casa)
@@ -416,7 +452,7 @@ Los posteos están en body, dentro de html elements. Tenemos que pasarlos a text
 
 posteos <- ig_casa$html_elements("body")[3] %>% 
   html_text2()
-
+posteos
 
 ```
 
@@ -427,15 +463,27 @@ posteos <- ig_casa$html_elements("body")[3] %>%
 posts <- unlist(strsplit(posteos, "\n"))
 posts <- trimws(posts)
 posts <- posts[posts != ""]
+
+
+posts
 ```
 
 ```{r}
-
 df_posts <- data.frame(
   Post = seq_along(posts),  # Número del post
   Contenido = posts,        # Texto del post
-  stringsAsFactors = FALSE
-)
+  stringsAsFactors = FALSE)
+```
+
+
+```{r}
+
+df_filtrado <- df_posts %>% 
+  filter(Contenido != "Carousel")
+
+df_filtrado <- df_filtrado %>% 
+  slice(15:37)
+
 
 ```
 

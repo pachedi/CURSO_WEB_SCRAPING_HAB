@@ -75,9 +75,10 @@ lectura <- read_html(pagina)
   
 max_pag <- lectura %>%
   html_nodes(".pagination a") %>%  
-  html_text() 
+  html_text() %>% 
   as.numeric() %>%              
   max(na.rm = TRUE) 
+  
   
 print(max_pag)
   
@@ -86,7 +87,7 @@ print(max_pag)
 ```{r}
 pagina_base <- "https://www.diariodepontevedra.es/tags/buenos-aires?page="
 
-max_pag <- 1
+max_pag <- 5
 
 repeat {
   
@@ -172,6 +173,8 @@ titulo <- noticia %>%
   html_text() %>% 
   str_squish()
 
+
+titulo
 ```
 
 ## Resumen
@@ -182,10 +185,17 @@ resumen <-  noticia %>%
   html_text() %>% 
   str_squish()
 
+print(resumen)
 ```
 
 ## Cuerpo del texto
 ```{r}
+
+
+#cuerpo <- noticia %>% 
+#  html_element("div.smart-sticky") %>% 
+#  html_text() %>% 
+#  str_squish()
 
 cuerpo <- noticia %>% 
   html_elements("p") %>% 
@@ -194,6 +204,22 @@ cuerpo <- noticia %>%
   paste(collapse = '\"', "") 
 
 cuerpo <- gsub('\\"', "", cuerpo)
+
+
+cuerpo
+
+pic <- rx() %>% 
+  rx_find('pic.')%>% 
+  rx_anything_but(value = ' ')
+
+
+cuerpo <- str_replace_all(cuerpo, pic, "")
+
+hasthag_mencion <- "(@|#)([^ ]*)"
+
+cuerpo <- str_replace_all(cuerpo, hasthag_mencion, "")
+
+cuerpo
 ```
 
 ## Fecha
@@ -204,7 +230,7 @@ fecha  <- noticia %>%
   html_text() %>% 
   str_squish()
 
-
+fecha
 ```
 
 ## Autor
@@ -215,6 +241,7 @@ autor  <- noticia %>%
   html_text() %>% 
   str_squish()
 
+autor
 ```
 
 ## Creamos la función
@@ -253,9 +280,7 @@ tabla_noticias <- function(links){
     html_text() %>% 
     str_squish()
 
-  tabla_final <- as.data.frame(cbind("titulo"=titulo, "autor" = autor, "resumen"=resumen,  "cuerpo"=cuerpo,
-                                     "fecha" = fecha
-                                     ))
+  tabla_final <- as.data.frame(cbind("titulo"=titulo, "autor" = autor, "resumen"=resumen,  "cuerpo"=cuerpo,"fecha" = fecha))
   
   return(tabla_final)
 
@@ -276,6 +301,10 @@ noticias <- tibble(
 
 for(i in 1:length(links_completos)){
   
+  print(paste("Se encontraron", length(links_completos), "noticias"))
+  
+  print(paste("Descargando informacion de noticia", i, "de", length(links_completos)))
+  
   resultado <- tabla_noticias(links_completos[i])
 
   noticias <- noticias %>% 
@@ -294,11 +323,11 @@ print(noticias)
 
 nube <- function(tabla){
 
-  tabla_2 <- tabla %>% 
+  tabla_2 <- noticias %>% 
     select(cuerpo)
     
   tabla_2 <- tabla_2 %>% 
-    mutate(txt = str_to_lower(cuerpo))
+    mutate(cuerpo = str_to_lower(cuerpo))
   
   tabla_2$cuerpo <- gsub("\\.\\(function\\(.*?\\)\\);", "", tabla_2$cuerpo)
   
@@ -307,20 +336,26 @@ nube <- function(tabla){
       rx_anything_but(value = ' ')
     
   tabla_2$cuerpo <- gsub(webs, "", tabla_2$cuerpo)
-
+  
+  pic <- rx() %>% rx_find('pic.')%>% 
+    rx_anything_but(value = ' ') 
+  
+  tabla_2$cuerpo <- str_replace_all(tabla_2$cuerpo, pic, "") 
+  
+  hasthag_mencion <- "(@|#)([^ ]*)" 
+  
+  tabla_2$cuerpo <- str_replace_all(tabla_2$cuerpo, hasthag_mencion, "")
     
   
   tabla_2 <- tabla_2 %>% 
-    mutate(txt = str_replace_all(txt, "[[:digit:]]", '')) %>% 
-    select(-1)
+    mutate(cuerpo = str_replace_all(cuerpo, "[[:digit:]]", ''))
   
   
   
-  stop_words <- as.data.frame(readLines("./data/stopwords.txt", encoding = "utf-8")) %>% 
-    rename(word= 1)
+  stop_words <- as.data.frame(readLines("./data/stopwords.txt", encoding = "utf-8")) %>%     rename(word= 1)
   
   unigram <- tabla_2 %>% 
-    unnest_tokens(output = word, input= txt, token = "ngrams", n=1) %>% 
+    unnest_tokens(output = word, input= cuerpo, token = "ngrams", n=1) %>% 
     na.omit() %>% 
     anti_join(stop_words) 
   
@@ -458,7 +493,7 @@ obtener_links <- function(){
       break
     }
     
-    max_pag <<- max_pag + 1
+    max_pag <- max_pag + 1
   }
   
 ##
@@ -505,7 +540,7 @@ noticias <- tibble(
                 autor= character()
                 )
 
-for(i in 1:length(links_nuevos)){
+for(i in 1:length(buscar_links)){
   
   print(paste("Procesando noticia: ", i))
   
