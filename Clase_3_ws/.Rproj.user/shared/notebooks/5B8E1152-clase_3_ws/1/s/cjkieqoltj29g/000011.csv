@@ -1,6 +1,0 @@
-"0",""
-"0","links <- pagina %>% "
-"0","  html_nodes(""div.queryly_item_title"") %>% "
-"0","  html_elements(""a"") %>% "
-"0","  html_attr(""href"") "
-"0",""

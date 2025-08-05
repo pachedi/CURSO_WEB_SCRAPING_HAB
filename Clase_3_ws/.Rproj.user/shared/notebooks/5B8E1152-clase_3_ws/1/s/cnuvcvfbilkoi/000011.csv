@@ -1,4 +1,0 @@
-"0",""
-"0","posts <- unlist(strsplit(posteos, ""\n""))"
-"0","posts <- trimws(posts)"
-"0","posts <- posts[posts != """"]"

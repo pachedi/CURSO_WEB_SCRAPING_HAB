@@ -60,6 +60,7 @@ Como vemos, el corpus aún no ha sido procesado. Empecemos, entonces, por ahí y
 
 Vamos a normalizar, primero, los campos de texto. Con esta instrucción cambiamos el encoding de texto de los campos `text` y `title` y lo pasamos a ASCII. Esta es una forma bastante rápida de eliminar tildes, ñ y otros acentos.
 ```{r}
+
 revistas <- revistas %>%
                 mutate(text = stringi::stri_trans_general(text, "Latin-ASCII"),
                        titulo = stringi::stri_trans_general(titulo, "Latin-ASCII"))
@@ -83,7 +84,7 @@ Hagamos una exploración rápida:
 ```{r}
 revistas_tidy %>%
         group_by(word) %>%
-        summarise(n=n()) %>%
+        summarise( n = n() ) %>%
         arrange(desc(n))
 ```
 
@@ -102,7 +103,7 @@ stop_words <- stop_words %>%
 
 ## Ahora, las eliminamos 
 revistas_tidy <- revistas_tidy %>%
-                anti_join(stop_words)
+                anti_join(stop_words, by="word")
 ```
 
 Veamos cómo quedó ahora la distribución de palabras:
@@ -116,7 +117,7 @@ revistas_tidy %>%
 #### Pregunta
 ¿Cómo podríamos identificar las palabras más usadas cada grupo de revista?
 ```{r}
-revistas_tidy %>%
+hombre_mujer <- revistas_tidy %>%
         group_by(categoria,word) %>%
         summarise(n=n()) %>%
         arrange(desc(n))
@@ -140,7 +141,6 @@ head(hombres)
 
 ```{r}
 
-
 mujeres <- revistas_tidy %>%
         group_by(categoria,word) %>%
         summarise(n=n()) %>%
@@ -163,6 +163,12 @@ word_counts <- revistas_tidy %>%
         ungroup()
 
 head(word_counts)
+
+
+documento_1 <- word_counts %>% 
+  filter(id == 1) %>% 
+  arrange(-n)
+
 ```
 
 Tenemos hasta aquí nuestra estructura de datos habitual: un token por fila y una columna de conteo. Vamos a transformarla ahora a una TFM:
@@ -179,7 +185,9 @@ Vemos que este conjunto de datos contiene documentos (cada uno de ellos un discu
 ### Ahora sí, vamos a modelar los tópicos
 Ahora usemos el paquete `topicmodels` para estimar un modelo LDA. ¿Cuántos temas le diremos al algoritmo que haga? Esta es una pregunta muy parecida a la de un clustering de k-medias. La respuesta es desilusionadora: no lo sabemos. No queda otra opción que ir probando. Por ahora y a los fines prácticos de esta primera aproximación vamos a probar un modelo muy simple: 4 temas.
 ```{r}
+
 lda_4 <- LDA(disc_dtm, k=4, control = list(seed = 1234))
+
 ```
 
 Vemos que entrenar el modelo es simple: una línea de código. Lo difícil viene ahora.
@@ -191,6 +199,9 @@ Vemos que entrenar el modelo es simple: una línea de código. Lo difícil viene
 Lo primero que vamos a hacer es tomar la distribución de palabras para cada tópico. Para construir esa distribución vamos a tomar la matriz `beta` que está dentro del objeto `stm`
 La matriz `beta` describe qué palabras tienen mayor probabilidad de estar asociadas a cada uno de los tópicos emergentes.
 ```{r}
+
+options(scipen=999)
+
 ap_topics <- tidy(lda_4, matrix = "beta") # Si esta línea  tira algún error,  install.packages("reshape2")
 
 ap_topics
@@ -230,7 +241,8 @@ Además de estimar cada tema como una mezcla de palabras, LDA también modela ca
 ```{r}
 options(scipen = 999)
 doc_2_topics <- tidy(lda_4, matrix = "gamma")
-doc_2_topics %>%
+
+documentos_gamma <-  doc_2_topics %>%
   mutate(gamma = round(gamma, 5))
 ```
 
@@ -252,12 +264,21 @@ topicos_wider <- doc_2_topics %>%
 
 Para verificar la salida del modelo, podríamos ordenar la matriz documento-término  y verificar cuáles eran las palabras más comunes en un documento
 ```{r}
-revistas_tidy %>%
+numero_2571 <- revistas_tidy %>%
   filter(id==2571) %>%
   group_by(id, word) %>%
   summarise(n=n()) %>%
   select(word, n) %>%
   arrange(desc(n))
+
+
+numero_2092 <- revistas_tidy %>%
+  filter(id==2092) %>%
+  group_by(id, word) %>%
+  summarise(n=n()) %>%
+  select(word, n) %>%
+  arrange(desc(n))
+
 ```
 
 Se ve como este artículo parecen predominar palabras del tópico 4 (comidas, restaurantes). Veamos el texto completo de este documento:

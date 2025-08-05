@@ -1,6 +1,0 @@
-"0",""
-"0","df_noticia <- as.data.frame(cbind(""Titulo"" = titulo, ""Texto""= cuerpo,"
-"0","                                  ""Fecha"" = fecha, ""Autor"" = autor,"
-"0","                                  ""Link"" = links_completos[1]))"
-"0",""
-"0",""

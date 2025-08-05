@@ -1,12 +1,14 @@
 ---
 title: "Clase 3 - R web scraping"
-output: 
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
   html_document:
-    toc: true
-    toc_float: true
-    toc_collapsed: true
+    toc: yes
+    toc_float: yes
+    toc_collapsed: yes
     toc_depth: 3
-    #number_sections: true
     theme: lumen
 ---
 
@@ -23,6 +25,7 @@ library(RSelenium)
 library(tidyverse)
 library(rvest)
 library(Rcrawler)
+library(rJava)
 
 ```
 
@@ -31,7 +34,7 @@ Luego, buscamos al cliente de nuestra conexión con el navegador.
 ```{r}
 rd <- rsDriver(browser = "firefox",
                chromever = NULL,
-               port= 4456L)
+               port= 4448L)
 
 remDr <- rd[["client"]]
 
@@ -76,6 +79,7 @@ Buscamos la barra de búsqueda y tipeamos las palabras que queremos que coincida
 ```{r}
 
 Sys.sleep(5)
+
 search_bar <- remDr$findElement(using = "id", value = "queryly_query")
 
 search_bar$sendKeysToElement(list("web scraping"))
@@ -98,12 +102,13 @@ Esta es otra característica de las páginas dinámicas, se van cargando a medid
 ```{r}
 
 Sys.sleep(3)
-titles <- pagina %>% html_nodes("div.queryly_item_title") %>% 
+titles <- pagina %>% 
+  html_nodes("div.queryly_item_title") %>% 
   html_text() %>% 
   str_squish()
 
 length(titles)
-
+titles
 ```
 
 Afortunadamente, existe una función para scrollear.
@@ -122,7 +127,7 @@ Otra opción:
 ```{r}
 
 # Función para desplazarse al final de la página
-scroll_to_bottom <- function(driver, max_attempts = 10, delay = 4) {
+scroll_to_bottom <- function(driver, max_attempts = 4, delay = 4) {
   for (i in 1:max_attempts) {
     # Obtiene la altura actual de la página
     previous_height <- remDr$executeScript("return document.body.scrollHeight")
@@ -177,6 +182,8 @@ links <- pagina %>%
   html_elements("a") %>% 
   html_attr("href") 
 
+
+links
 ```
 
 Eliminanos los links duplicados por las dudas.
@@ -266,7 +273,7 @@ df_noticia <- as.data.frame(cbind("Titulo" = titulo, "Texto"= cuerpo,
                                   "Fecha" = fecha, "Autor" = autor,
                                   "Link" = links_completos[1]))
 
-
+df_noticia
 ```
 
 Podemos dividir las secciones en 3.
@@ -412,6 +419,18 @@ for(i in 1:length(links_completos)){
 }
 
 ```
+```{r}
+library(openxlsx)
+
+write.xlsx(noticias, "noticias_scraping_infobae.xlsx")
+getwd()
+
+
+
+```
+
+
+
 
 ```{r}
 
@@ -482,7 +501,7 @@ df_filtrado <- df_posts %>%
   filter(Contenido != "Carousel")
 
 df_filtrado <- df_filtrado %>% 
-  slice(15:37)
+  slice(14:37)
 
 
 ```
@@ -504,7 +523,7 @@ estatica <- read_html("https://www.forbes.com/top-colleges/")
 Vemos que el resultado es nulo
 ```{r}
 
-estatica %>% html_elements(".CustomTable_container__CkQ96")
+estatica %>% html_elements("div.CustomTable_container__CkQ96")
 
 
 ```

@@ -28,12 +28,6 @@ library(tidyverse)
 ```
 
 
-```{r}
-
-
-```
-
-
 El web scraping o "rascado" nos permite extraer datos publicados en un sitio web rascando el código html parar obtener tablas con texto, links, fechas, imágenes etc.
 
 ## HTML
@@ -118,7 +112,7 @@ El Web scraping entonces nos sirve para extraer información de una página web 
 
 ### Identificación de los elementos
 
-Para identificar la estructura HTML de la página, necesitaremos utilizar herramientas de desarrollador. Para acceder a estas herramientas usamos ctrl+shit+i .
+Para identificar la estructura HTML de la página, necesitaremos utilizar herramientas de desarrollador. Para acceder a estas herramientas usamos ctrl+shift+i .
 Al presionar estas teclas, veremos que se abre un panel en el navegador con el formato de la página.
 Otra manera de acceder a este panel es haciendo click derecho --> "Inspeccionar elemento"
 Verán que cuando pasamos el mouse por los distintos elementos, se van a ir marcando
@@ -339,7 +333,7 @@ Si bien la clase completa es no-margin titulo-libro t36px, nos quedaremos sólo 
 ```{r}
 
 titulo <- descarga %>% 
-  html_element("h1.titulo-libro") %>% 
+  html_element("h1.text-4xl") %>% 
   html_text2() 
 
 print(titulo)
@@ -352,7 +346,7 @@ Si buscamos el elemento que contiene la clase textContent podemos ir a buscar al
 ```{r}
 
 biografia <- descarga %>% 
-  html_element("div.textContent") %>% 
+  html_element("div.prose") %>% 
   html_text2()
 
 print(biografia)
@@ -368,20 +362,13 @@ print(biografia_2)
 ¿Qué sucedió? Existe otro texto con la misma clase que está en un fragmento antes por lo cual, R toma el 1er fragmento que encuentra.
 Esto nos obliga a realizar una aclaración previa.
 Primero darle el id (sabemos que hay uno sólo por sección) y luego pedirle la sección que encontramos. De esta manera, encontramos el fragmento adecuado.
-```{r}
-biografia <- descarga %>% 
-  html_element("#col_right") %>% 
-  html_element("div.textContent") %>% 
-  html_text2()
 
-biografia
-```
 
 ### Autor
 ```{r}
 autor <- descarga %>% 
-  html_element("#col_right") %>% 
-  html_element("p") %>% 
+  html_element("section.container") %>% 
+  html_element("div.text-xl") %>% 
   html_text2()
 
 autor
@@ -391,54 +378,33 @@ autor
 
 ### Tabla
 
-Podemos descargar una tabla con la función html_table()
-
-
-```{r}
-
-tabla_info_2 <- descarga %>% 
-  html_element("#tab-content-info") %>% 
-  html_table()  
-
-```
-
 
 ```{r}
 
 tabla_info <- descarga %>% 
-        html_element("table.no-print") %>% 
-        html_table()
+        html_element("div.grid.flex-wrap") %>%
+        #html_element("div.hidden") %>%
+        html_text2()
 
 tabla_info
 
 ```
+```{r}
+lineas <- unlist(strsplit(tabla_info, "\n"))
+```
 
-
-
-Las tildes nos traen problemas de formato. Por este motivo, utilizamos clean_names() de janitor
 ```{r}
 
-tabla_info2 <- tabla_info%>%
-        pivot_wider(names_from = "X1", values_from = "X2") %>%
-        janitor::clean_names() %>% 
-        rename("precio" = "pvp_con_iva",
-               "paginas" = "num_de_paginas",
-               "fecha_publicacion" = "publicacion") %>%
-        dplyr::select(-codigo)
-
-print(tabla_info2)
+claves <- lineas[seq(1, length(lineas), by = 2)]
+valores <- lineas[seq(2, length(lineas), by = 2)]
 
 ```
 
-Ahora combinamos todas las columnas para crear una tabla:
 
 ```{r}
- 
-tabla_final <- as.data.frame(cbind("Autor" = autor,"Biografia"=biografia,
-                                   tabla_info2))
+tabla <- data.frame(Clave = claves, Valor = valores, stringsAsFactors = FALSE)
 
 ```
-
 
 
 ## Convertir en función
@@ -449,33 +415,36 @@ tabla_libro <- function(link){
   descarga <- read_html(link)
   
   titulo <- descarga %>% 
-    html_element("h1.titulo-libro") %>% 
+    html_element("h1.text-4xl") %>% 
     html_text2() 
   
   biografia <- descarga %>% 
-    html_element("#col_right") %>% 
-    html_element("div.textContent") %>% 
+    html_element("div.prose") %>% 
+    #html_element("div.textContent") %>% 
     html_text2()
   
   autor <- descarga %>% 
-    html_element("#col_right") %>% 
-    html_element("p.t24px") %>% 
-    html_text2()
+  html_element("section.container") %>% 
+  html_element("div.text-xl") %>% 
+  html_text2()
   
   tabla_info <- descarga %>% 
-          html_element("table.no-print") %>% 
-          html_table()
+        html_element("div.grid.flex-wrap") %>%
+        #html_element("div.hidden") %>%
+        html_text2()
   
-  tabla_info2 <- tabla_info%>%
-          pivot_wider(names_from = "X1", values_from = "X2") %>%
-          janitor::clean_names() %>% 
-          rename("precio" = "pvp_con_iva",
-                 "paginas" = "num_de_paginas",
-                 "fecha_publicacion" = "publicacion") %>%
-          dplyr::select(-codigo)
+  lineas <- unlist(strsplit(tabla_info, "\n"))
+  
+  claves <- lineas[seq(1, length(lineas), by = 2)]
+  valores <- lineas[seq(2, length(lineas), by = 2)]
+  
+  tabla <- data.frame(Clave = claves, Valor = valores, stringsAsFactors = FALSE)
+  
+  tabla_p <- pivot_wider(tabla, names_from= Clave, values_from = Valor)
+  
   
   tabla_final <- as.data.frame(cbind("Autor" = autor,"Biografia"=biografia,
-                                     tabla_info2))
+                                     "Titulo" = titulo, tabla_p))
   
   return(tabla_final)
 }
@@ -515,7 +484,7 @@ pagina <- read_html("https://www.anagrama-ed.es/autor/almodovar-pedro-38")
 
 
 libros <- pagina %>% 
-  html_elements("div.libro-vertical__portada") %>% 
+  html_elements("div.overflow-x-hidden") %>% 
   html_elements("a") %>%
   html_attr("href")
 
@@ -550,13 +519,13 @@ tabla_libro(libros_link[1])
 books <- tibble(
                 Autor=character(),
                 Biografia=character(),
-                isbn=character(),
-                ean=character(),
-                precio= character(),
-                paginas=character(),
-                coleccion=character(),
-                fecha_publicacion = character(),
-                otras_ediciones = character()
+                Titulo = character(),
+                ISBN=character(),
+                EAN=character(),
+                "PVP CON IVA"= character(),
+                "NÚM. DE PÁGINAS"=character(),
+                CÓDIGO=character(),
+                PUBLICACIÓN = character()
                 )
 
 for(i in libros_link){
