@@ -192,6 +192,8 @@ discurso <- html_discurso %>%
 ```{r}
 print(discurso)
 
+discurso[208]
+
 ```
 
 Ahora podemos crear un directorio y guardarlo.
@@ -235,10 +237,9 @@ print(extraer_texto)
 Vemos que existen dobles saltos de línea que no son cómodos para la lectura.
 Podemos reemplazarlos por un salto de línea simple.
 ```{r}
-
-
 extraer_texto <- str_replace_all(extraer_texto, pattern = "\r\n", replacement = "\n")
 extraer_texto <- str_replace_all(extraer_texto, pattern = "\n\n", replacement = "\n")
+
 ```
 
 
@@ -374,6 +375,24 @@ autor <- descarga %>%
 autor
 
 ```
+```{r}
+
+biografia_pagina <- descarga %>% 
+  html_element("section.container") %>% 
+  html_element("a") %>% 
+  html_attr("href")
+
+link_bio <- paste0("https://www.anagrama-ed.es", biografia_pagina)
+
+pagina_bio <- read_html(link_bio)
+
+bio_texto <- pagina_bio %>% 
+  html_elements("div.prose") %>% 
+  html_element("p") %>% 
+  html_text()
+
+
+```
 
 
 ### Tabla
@@ -395,7 +414,7 @@ lineas <- unlist(strsplit(tabla_info, "\n"))
 
 ```{r}
 
-claves <- lineas[seq(1, length(lineas), by = 2)]
+claves <- lineas[seq(1, length(lineas), by = 2)]  
 valores <- lineas[seq(2, length(lineas), by = 2)]
 
 ```
@@ -406,7 +425,12 @@ tabla <- data.frame(Clave = claves, Valor = valores, stringsAsFactors = FALSE)
 
 ```
 
+```{r}
 
+tabla_pivot <- pivot_wider(tabla, names_from = Clave, values_from = Valor)
+
+tabla_pivot
+```
 ## Convertir en función
 ```{r}
 
@@ -418,7 +442,7 @@ tabla_libro <- function(link){
     html_element("h1.text-4xl") %>% 
     html_text2() 
   
-  biografia <- descarga %>% 
+  contratapa <- descarga %>% 
     html_element("div.prose") %>% 
     #html_element("div.textContent") %>% 
     html_text2()
@@ -427,6 +451,21 @@ tabla_libro <- function(link){
   html_element("section.container") %>% 
   html_element("div.text-xl") %>% 
   html_text2()
+  
+  biografia_pagina <- descarga %>% 
+  html_element("section.container") %>% 
+  html_element("a") %>% 
+  html_attr("href")
+
+  link_bio <- paste0("https://www.anagrama-ed.es", biografia_pagina)
+
+  pagina_bio <- read_html(link_bio)
+
+  bio_texto <- pagina_bio %>% 
+  html_elements("div.prose") %>% 
+  html_element("p") %>% 
+  html_text()
+  
   
   tabla_info <- descarga %>% 
         html_element("div.grid.flex-wrap") %>%
@@ -443,8 +482,8 @@ tabla_libro <- function(link){
   tabla_p <- pivot_wider(tabla, names_from= Clave, values_from = Valor)
   
   
-  tabla_final <- as.data.frame(cbind("Autor" = autor,"Biografia"=biografia,
-                                     "Titulo" = titulo, tabla_p))
+  tabla_final <- as.data.frame(cbind("Autor" = autor,"Contratapa"=contratapa,
+                                       "Titulo" = titulo,"Biografía"= bio_texto,                                          tabla_p))
   
   return(tabla_final)
 }
@@ -457,7 +496,7 @@ tabla_libro <- function(link){
 
 link <- "https://www.anagrama-ed.es/libro/panorama-de-narrativas/tierra-de-empusas/9788433929716/PN_1142"
 
-libro_nuevo <- tabla_libro(link = link)
+libro_nuevo2 <- tabla_libro(link)
 
 
 ```
@@ -491,6 +530,32 @@ libros <- pagina %>%
 print(libros)
 ```
 
+```{r}
+
+
+obtener_links_anagrama <- function(link){
+  
+  links <- c()
+
+  libros <- read_html(link) %>% 
+    html_elements("div.overflow-x-hidden") %>% 
+    html_elements("a") %>%
+    html_attr("href")
+  
+  raiz <- "https://www.anagrama-ed.es"
+
+  libros_link <- str_c(raiz, libros)
+  
+  return(libros_link)
+
+}
+
+links_scrap <- obtener_links_anagrama("https://www.anagrama-ed.es/autor/acker-kathy-17")
+
+```
+
+
+
 Vemos que obtenemos la parte final del link para cada libro.
 Por este motivo, debemos agregar la raiz de la página para obtener el link entero.
 ```{r}
@@ -509,6 +574,8 @@ for (i in libros_link){
 
 
 tabla_libro(libros_link[1])
+tabla_libro(libros_link[2])
+tabla_libro(libros_link[3])
 
 
 ```
@@ -518,7 +585,7 @@ tabla_libro(libros_link[1])
 
 books <- tibble(
                 Autor=character(),
-                Biografia=character(),
+                Contratapa = character(),
                 Titulo = character(),
                 ISBN=character(),
                 EAN=character(),
@@ -527,6 +594,11 @@ books <- tibble(
                 CÓDIGO=character(),
                 PUBLICACIÓN = character()
                 )
+
+link <- "https://www.anagrama-ed.es/autor/acker-kathy-17"
+
+links_scrap <- obtener_links_anagrama(link)
+
 
 for(i in libros_link){
   
