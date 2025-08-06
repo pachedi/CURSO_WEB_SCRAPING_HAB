@@ -597,7 +597,7 @@ books <- tibble(
 
 link <- "https://www.anagrama-ed.es/autor/acker-kathy-17"
 
-links_scrap <- obtener_links_anagrama(link)
+libros_link <- obtener_links_anagrama(link)
 
 
 for(i in libros_link){
@@ -611,21 +611,3 @@ for(i in libros_link){
 print(books)
 
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
