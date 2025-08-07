@@ -1,5 +1,0 @@
-"0","noticias_tf_idf <- palabraS_noticias %>%
-  bind_tf_idf(word,autor , n)
-"
-"2","Warning: A value for tf_idf is negative:
- Input should have exactly one row per document-term combination."

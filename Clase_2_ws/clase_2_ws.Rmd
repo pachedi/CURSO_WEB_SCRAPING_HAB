@@ -31,7 +31,6 @@ require(rapport)
 require(wordcloud2)
 library(tidytext)
 library(htmlwidgets)
-require(openxlsx)
 
 ```
 
@@ -66,7 +65,7 @@ etc...
 Ahora que tenemos la estructura, vamos a buscar el rango de páginas necesario.
 ```{r}
 
-pagina <- "https://www.diariodepontevedra.es/tags/buenos-aires"
+pagina <- "https://www.diariodepontevedra.es/tags/barcelona"
 
 lectura <- read_html(pagina)
 
@@ -87,7 +86,7 @@ print(max_pag)
 ```{r}
 pagina_base <- "https://www.diariodepontevedra.es/tags/buenos-aires?page="
 
-max_pag <- 5
+max_pag <- 1
 
 repeat {
   
@@ -600,7 +599,7 @@ noticias_tf_idf %>%
 ```
 ```{r,eval = FALSE}
 
-unique(noticias_madrid$autor)
+unique(noticias_tf_idf$autor)
 
 
 ```
