@@ -86,7 +86,7 @@ print(max_pag)
 ```{r}
 pagina_base <- "https://www.diariodepontevedra.es/tags/buenos-aires?page="
 
-max_pag <- 1
+max_pag <- 5
 
 repeat {
   
@@ -137,7 +137,10 @@ links <- c()
 
 for(i in 1:max_pag){
   
- paginas <- read_html(paste0("https://www.diariodepontevedra.es/tags/buenos-aires/?page=",i)) %>%
+ objeto <- read_html(paste0("https://www.diariodepontevedra.es/tags/buenos-aires/?page=",i))
+   
+   
+paginas <- objeto %>%    
    html_elements("h2.title") %>% 
    html_elements("a") %>% 
    html_attr("href")
@@ -151,7 +154,7 @@ print(links)
 Le agregamos la raiz a los links.
 ```{r}
 
-links_completos <- str_c(raiz, links)
+links_completos <- paste0(raiz, links)
 links_completos
 ```
 
@@ -211,6 +214,7 @@ pic <- rx() %>%
   rx_find('pic.')%>% 
   rx_anything_but(value = ' ')
 
+cuerpo <- str_replace_all(cuerpo, "Tlfno", "")
 
 cuerpo <- str_replace_all(cuerpo, pic, "")
 
@@ -230,6 +234,11 @@ fecha  <- noticia %>%
   str_squish()
 
 fecha
+
+fecha <- str_sub(fecha,1,9)
+
+fecha <- dmy(fecha)
+
 ```
 
 ## Autor
@@ -248,7 +257,6 @@ autor
 
 tabla_noticias <- function(links){
 
-  
   noticia <- read_html(links)
   
   titulo <- noticia %>% 
@@ -267,19 +275,39 @@ tabla_noticias <- function(links){
     str_squish() %>% 
     paste(collapse = '\"', "") 
   
-  cuerpo <- gsub('\\"', "", cuerpo)
+  cuerpo <- gsub('\\"', "", cuerpo) %>% 
+    str_squish()
+  
+  texto_indeseado <-"Lepanto 5, Pontevedra Tlfno: 986 011 100 (Grupo El Progreso)"
+  
+  if(cuerpo == texto_indeseado){
+    
+    cuerpo <- noticia %>% 
+      html_element("div.body") %>% 
+      html_text() %>% 
+      str_squish()
+  }
+  
+  
+  
   
   fecha  <- noticia %>% 
     html_element("span.content-meta-date-created") %>% 
     html_text() %>% 
     str_squish()
   
+  fecha <- str_sub(fecha,1,9)
+
+  #fecha <- dmy(fecha)
+  
   autor  <- noticia %>% 
     html_element("span.author-name") %>% 
     html_text() %>% 
     str_squish()
+  
+  link = links
 
-  tabla_final <- as.data.frame(cbind("titulo"=titulo, "autor" = autor, "resumen"=resumen,  "cuerpo"=cuerpo,"fecha" = fecha))
+  tabla_final <- as.data.frame(cbind("titulo"=titulo, "autor" = autor, "resumen"=resumen,  "cuerpo"=cuerpo,"fecha" = fecha, "link" = link))
   
   return(tabla_final)
 
@@ -290,12 +318,21 @@ tabla_noticias <- function(links){
 
 ```{r}
 
+resultado <-  tabla_noticias(links_completos[6])
+
+```
+
+
+
+```{r}
+
 noticias <- tibble(
                 titulo=character(),
                 resumen=character(),
                 cuerpo=character(),
                 fecha=character(),
-                autor= character()
+                autor= character(),
+                link= character()
                 )
 
 for(i in 1:length(links_completos)){
@@ -322,7 +359,7 @@ print(noticias)
 
 nube <- function(tabla){
 
-  tabla_2 <- noticias %>% 
+  tabla_2 <- tabla %>% 
     select(cuerpo)
     
   tabla_2 <- tabla_2 %>% 
@@ -333,7 +370,10 @@ nube <- function(tabla){
   webs <- rx() %>% 
       rx_find('http')%>% 
       rx_anything_but(value = ' ')
-    
+  
+  
+  tabla_2$cuerpo <- str_replace_all(tabla_2$cuerpo, "tlfno", "")
+  
   tabla_2$cuerpo <- gsub(webs, "", tabla_2$cuerpo)
   
   pic <- rx() %>% rx_find('pic.')%>% 
@@ -348,8 +388,6 @@ nube <- function(tabla){
   
   tabla_2 <- tabla_2 %>% 
     mutate(cuerpo = str_replace_all(cuerpo, "[[:digit:]]", ''))
-  
-  
   
   stop_words <- as.data.frame(readLines("./data/stopwords.txt", encoding = "utf-8")) %>%     rename(word= 1)
   
@@ -376,14 +414,15 @@ wordcloud2(nube)
 
 grafico <- function(tabla){
   
-ggplot(tabla[1:20,], aes(x=reorder(word,n), y=n))+
-  geom_col(aes(fill=word),col="black")+
+ggplot(tabla[1:20, ], aes(x=reorder(word,n), y=n))+
+  geom_col(aes(fill=n),col="black")+
   coord_flip()+
   labs(title = paste("Cantidad de menciones en notas"),
        x="Palabra", y= "Frecuencia",
        caption="Elaboración propia en base a web scraping del sitio 'Diario de Pontevedra'")+
   theme_minimal()+
-    theme(legend.position = "none")
+  theme(legend.position = "none")+
+  scale_fill_viridis_c()  
 
 }
 
@@ -520,6 +559,13 @@ obtener_links <- function(){
 
 
 ```
+
+```{r}
+
+source("buscar_links.R")
+
+```
+
 
 Probamos:
 ```{r ,eval = FALSE}
