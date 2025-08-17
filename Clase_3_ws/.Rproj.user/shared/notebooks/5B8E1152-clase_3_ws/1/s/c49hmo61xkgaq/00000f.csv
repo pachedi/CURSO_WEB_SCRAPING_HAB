@@ -1,5 +1,0 @@
-"0",""
-"0","pagina_fuente <- remDr$getPageSource()[[1]]"
-"0",""
-"0","pagina <- read_html(pagina_fuente)"
-"0",""

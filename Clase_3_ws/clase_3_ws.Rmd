@@ -34,7 +34,8 @@ Luego, buscamos al cliente de nuestra conexión con el navegador.
 ```{r}
 rd <- rsDriver(browser = "firefox",
                chromever = NULL,
-               port= 4448L)
+               port= 4444L,
+               check=F)
 
 remDr <- rd[["client"]]
 
@@ -276,6 +277,14 @@ df_noticia <- as.data.frame(cbind("Titulo" = titulo, "Texto"= cuerpo,
 df_noticia
 ```
 
+## Cerrar la conexión
+```{r}
+rd$client$close()
+rd$server$stop()
+```
+
+
+
 Podemos dividir las secciones en 3.
 Una primera parte para obtener los links que necesitamos de una página dinámica.
 Es importante mencionar que a veces RSelenium va más rápido de lo que se cargan los datos.
@@ -284,7 +293,8 @@ Por este motivo, es necesario darle tiempo con Sys.sleep()
 
 rd <- rsDriver(browser = "firefox",
                chromever = NULL,
-               port= 4457L)
+               port= 4444L,
+               check= F)
 
 remDr <- rd[["client"]]
 
@@ -409,7 +419,7 @@ print(paste("Se encontraron", length(links_completos), "noticias\n"))
 
 for(i in 1:length(links_completos)){
   
-  print(paste("Obteniendo información de noticia:\n ",links_completos[i]))
+  cat(paste("Obteniendo información de noticia", i, "de",   length(links_completos),":","\n",  links_completos[i]))
   
   resultado <- tabla_noticias(links_completos[i])
   
@@ -436,11 +446,20 @@ getwd()
 
 print(head(noticias))
 ```
+```{r}
+rd$client$close()
+rd$server$stop()
+```
+
 
 ## Instagram
 ### read_html_live()
 
 ```{r}
+
+#remotes::install_github("rstudio/chromote")
+library(chromote)
+
 url <- "https://www.instagram.com/bachilleratopopularcasabierta/"
 
 ```
@@ -455,7 +474,6 @@ ig_casa <- rvest::read_html_live(url)
 Podemos explorar el elemento para ver qué tiene dentro.
 ```{r}
 ls(ig_casa)
-
 
 ```
 
