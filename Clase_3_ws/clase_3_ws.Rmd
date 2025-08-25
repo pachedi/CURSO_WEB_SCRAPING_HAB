@@ -26,6 +26,8 @@ library(tidyverse)
 library(rvest)
 library(Rcrawler)
 library(rJava)
+#devtools::install_github("salimk/Rcrawler")
+
 
 ```
 
@@ -56,6 +58,7 @@ Algunas páginas presentan pop ups de suscripción o similar. Tenemos que quitar
 ```{r}
 
 Sys.sleep(5)
+
 remDr$findElements("id", "onesignal-slidedown-cancel-button")[[1]]$clickElement()
 
 
@@ -95,6 +98,7 @@ pagina_fuente <- remDr$getPageSource()[[1]]
 
 pagina <- read_html(pagina_fuente)
 
+
 ```
 
 Obtengamos los títulos.
@@ -104,7 +108,7 @@ Esta es otra característica de las páginas dinámicas, se van cargando a medid
 
 Sys.sleep(3)
 titles <- pagina %>% 
-  html_nodes("div.queryly_item_title") %>% 
+  html_elements("div.queryly_item_title") %>% 
   html_text() %>% 
   str_squish()
 
@@ -115,13 +119,17 @@ titles
 Afortunadamente, existe una función para scrollear.
 ```{r}
 
+for(i in 1:4){
+  
 remDr$executeScript("window.scrollTo(0, document.body.scrollHeight);")
 
-Sys.sleep(5)
+Sys.sleep(5)  
+  
+}
 
-remDr$executeScript("window.scrollTo(0, document.body.scrollHeight);")
+#remDr$executeScript("window.scrollTo(0, document.body.scrollHeight);")
 
-Sys.sleep(5)
+#Sys.sleep(5)
 
 ```
 Otra opción:
@@ -166,11 +174,14 @@ pagina_fuente <- remDr$getPageSource()[[1]]
 
 pagina <- read_html(pagina_fuente)
 
-titles <- pagina %>% html_nodes("div.queryly_item_title") %>% 
+titles <- pagina %>% 
+  html_nodes("div.queryly_item_title") %>% 
   html_text() %>% 
   str_squish()
 
 length(titles)
+
+print(titles)
 
 ```
 
@@ -237,7 +248,7 @@ Cuerpo del texto
 ```{r}
 
 cuerpo <- noticia %>% 
-  html_element("p.paragraph") %>% 
+  html_elements("p.paragraph") %>% 
   html_text() %>% 
   str_squish()
 
@@ -336,6 +347,10 @@ remDr$executeScript("window.scrollTo(0, document.body.scrollHeight);")
 
 Sys.sleep(5)
 
+remDr$executeScript("window.scrollTo(0, document.body.scrollHeight);")
+
+Sys.sleep(5)
+
 page_source <- remDr$getPageSource()[[1]]
 
 Sys.sleep(3)
@@ -379,6 +394,15 @@ tabla_noticias <- function(links){
     html_text() %>% 
     str_squish()
   
+  if( cuerpo == ""){
+    
+    cuerpo <- noticia %>% 
+    html_element("div.body-article") %>% 
+    html_text() %>% 
+    str_squish()
+    
+  }
+  
   
   fecha  <- noticia %>% 
     html_element("span.sharebar-article-date") %>% 
@@ -402,6 +426,21 @@ tabla_noticias <- function(links){
 
 ```
 
+
+```{r}
+
+
+prueba <- read_html(noticias$Link[6])
+
+cuerpo <- prueba %>% 
+    html_element("div.body-article") %>% 
+    html_text() %>% 
+    str_squish()
+
+
+```
+
+
 Por último, la iteración sobre todos los links.
 
 Podemos agregar mensajes que indique por dónde va la función:
@@ -419,7 +458,7 @@ print(paste("Se encontraron", length(links_completos), "noticias\n"))
 
 for(i in 1:length(links_completos)){
   
-  cat(paste("Obteniendo información de noticia", i, "de",   length(links_completos),":","\n",  links_completos[i]))
+  cat(paste("Obteniendo información de noticia", i, "de",       length(links_completos),":","\n",  links_completos[i]))
   
   resultado <- tabla_noticias(links_completos[i])
   
@@ -429,6 +468,8 @@ for(i in 1:length(links_completos)){
 }
 
 ```
+
+
 ```{r}
 library(openxlsx)
 
@@ -516,7 +557,7 @@ df_posts <- data.frame(
 ```{r}
 
 df_filtrado <- df_posts %>% 
-  filter(Contenido != "Carousel")
+  filter(Contenido != "Secuencia")
 
 df_filtrado <- df_filtrado %>% 
   slice(14:37)

@@ -74,6 +74,7 @@ revistas <- revistas %>%
 
 Ahora podemos tokenizarlo:
 ```{r}
+
 revistas_tidy <- revistas %>%
                 unnest_tokens(word, text)
 
@@ -82,7 +83,7 @@ head(revistas_tidy)
 
 Hagamos una exploración rápida:
 ```{r}
-revistas_tidy %>%
+agrupado_revistas_tidy <- revistas_tidy %>%
         group_by(word) %>%
         summarise( n = n() ) %>%
         arrange(desc(n))
@@ -99,16 +100,19 @@ stop_words <- read_delim('./data/stopwords.txt',
 
 ## Aquí agregamos algunas palabras al listado de stopwords...
 stop_words <- stop_words %>%
-                bind_rows( tibble(word=c('ano', 'anos', 'ohlala', 'foto', 'the'))) 
+                bind_rows( tibble(word=c('ano', 'anos', 'ohlala', 'foto', 'the',
+                                         'aag', 'aires', 'aire'))) 
 
 ## Ahora, las eliminamos 
 revistas_tidy <- revistas_tidy %>%
                 anti_join(stop_words, by="word")
+
+
 ```
 
 Veamos cómo quedó ahora la distribución de palabras:
 ```{r}
-revistas_tidy %>%
+sin_sw <- revistas_tidy %>%
         group_by(word) %>%
         summarise(n=n()) %>%
         arrange(desc(n))
@@ -169,12 +173,17 @@ documento_1 <- word_counts %>%
   filter(id == 1) %>% 
   arrange(-n)
 
+
+documento_wider <- pivot_wider(documento_1,names_from = word, values_from = n)
+
 ```
 
 Tenemos hasta aquí nuestra estructura de datos habitual: un token por fila y una columna de conteo. Vamos a transformarla ahora a una TFM:
 ```{r}
 disc_dtm <- word_counts %>%
                 cast_dtm(id, word, n)
+
+#?cast_dtm
 
 disc_dtm
 ```
@@ -185,6 +194,8 @@ Vemos que este conjunto de datos contiene documentos (cada uno de ellos un discu
 ### Ahora sí, vamos a modelar los tópicos
 Ahora usemos el paquete `topicmodels` para estimar un modelo LDA. ¿Cuántos temas le diremos al algoritmo que haga? Esta es una pregunta muy parecida a la de un clustering de k-medias. La respuesta es desilusionadora: no lo sabemos. No queda otra opción que ir probando. Por ahora y a los fines prácticos de esta primera aproximación vamos a probar un modelo muy simple: 4 temas.
 ```{r}
+
+?LDA
 
 lda_4 <- LDA(disc_dtm, k=4, control = list(seed = 1234))
 
@@ -213,6 +224,11 @@ La función `tidy`conviritó el modelo a un formato de un tópico-término por f
 
 Podríamos usar el `slice_max()` de `dplyr` para encontrar los 15 términos que son más comunes dentro de cada tema. Dado que tenemos una tibble, podemos usar una visualización de `ggplot2`.
 ```{r}
+
+vida <- ap_topics %>% 
+  filter(term== "vida")
+
+
 ap_top_terms <- ap_topics %>%
   group_by(topic) %>%
   slice_max(beta, n = 15) %>% 
@@ -242,6 +258,9 @@ Además de estimar cada tema como una mezcla de palabras, LDA también modela ca
 options(scipen = 999)
 doc_2_topics <- tidy(lda_4, matrix = "gamma")
 
+doc_2_topics <- doc_2_topics %>% 
+  mutate(document = as.numeric(document))
+
 documentos_gamma <-  doc_2_topics %>%
   mutate(gamma = round(gamma, 5))
 ```
@@ -250,10 +269,13 @@ Cada uno de estos valores es una proporción estimada de palabras de ese documen
 
 Veamos los tópicos 3 y 4:
 ```{r}
-doc_2_topics %>%
+topicos_3_4 <- doc_2_topics %>%
   filter(topic == 3 | topic == 4) %>%
   mutate(gamma = round(gamma, 5))
+
 ```
+
+
 ```{r}
 
 topicos_wider <- doc_2_topics %>% 
@@ -271,6 +293,8 @@ numero_2571 <- revistas_tidy %>%
   select(word, n) %>%
   arrange(desc(n))
 
+numero_2571_articulo <- revistas %>% 
+  filter(id == 2571)
 
 numero_2092 <- revistas_tidy %>%
   filter(id==2092) %>%
@@ -279,9 +303,13 @@ numero_2092 <- revistas_tidy %>%
   select(word, n) %>%
   arrange(desc(n))
 
+numero_2092_articulo <- revistas %>% 
+  filter(id == 2092)
+
+
 ```
 
-Se ve como este artículo parecen predominar palabras del tópico 4 (comidas, restaurantes). Veamos el texto completo de este documento:
+Se ve como este artículo parecen predominar palabras del tópico 2 (comidas, restaurantes). Veamos el texto completo de este documento:
 ```{r}
 revistas %>%
   filter(id==2571) %>%
@@ -291,19 +319,21 @@ revistas %>%
 
 
 Por último, podemos hacer un primer análisis más interesante a partir de esta matriz "gamma". Podríamos preguntarnos si existe una composición diferencial entre los temas de las revistas de hombres y de mujeres. Para ello, tomamos la matriz gamma, y hacemos un `left_join` con la tabla de revistas (en la que teníamos la categoría):
+
 ```{r}
-doc_2_topics %>%
+promedios_gamma <- doc_2_topics %>%
   rename(id = document) %>% # tenemos que renombrar la columna para que pueda hacerse el join
   mutate(id = as.integer(id)) %>%
   left_join(revistas %>% select(id, categoria) %>% unique()) %>%
   group_by(categoria, topic) %>%
     summarise(mean = mean(gamma)*100
-              ) %>%
-  ggplot() +
+              ) 
+
+  ggplot(promedios_gamma) +
     geom_col(aes(x=topic, y=mean, fill=categoria), position='dodge') +
     theme_minimal()
     
 ```
 
-Vemos cómo las revistas de mujeres parecen concentrarse en los tópicos 1 y 3, mientras que las de hombres, en los tópicos 1, 2 y 4. Siendo el tópico 3 el menos relevante.
+Vemos cómo las revistas de mujeres parecen concentrarse en los tópicos 1 y 3, mientras que las de hombres, en los tópicos 2 y 4. Siendo el tópico 3 el menos relevante.
 
